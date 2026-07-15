@@ -77,6 +77,12 @@
   .selector-tipo button:last-child{border-radius:0 6px 6px 0;border-left:none;}
   .selector-tipo button.activo{background:var(--amarillo);color:#2b2b1a;}
 
+  /* ===== Pantalla 1: dos módulos lado a lado ===== */
+  .ingreso-grid{display:grid;gap:1.2rem;grid-template-columns:1fr 1fr;align-items:start;}
+  .ingreso-grid .panel{margin-bottom:0;}
+  .ingreso-grid table.personal{min-width:0;}
+  @media (max-width:900px){ .ingreso-grid{grid-template-columns:1fr;} }
+
   main{max-width:1180px;margin:1rem auto;padding:0 1rem 3rem;}
 
   .panel{
@@ -256,6 +262,9 @@
     margin-top:.9rem;padding-top:.8rem;border-top:1px solid var(--gris-borde);
     color:var(--verde-ok);font-weight:bold;
   }
+  .gate-admin{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-top:.9rem;
+    padding-top:.8rem;border-top:1px dashed var(--gris-borde);}
+  .gate-admin span{font-size:.82rem;color:var(--gris);}
   .cards-hint{text-align:center;color:var(--gris);font-size:.9rem;margin:1.1rem auto .1rem;}
   .cards.locked .card{opacity:.45;pointer-events:none;filter:grayscale(.65);}
   /* Parte diario: casillas de racho */
@@ -265,6 +274,13 @@
   #p_tbody td{border-bottom:1px solid var(--gris-borde);padding:.4rem .3rem;}
   #p_tbody tr:nth-child(even){background:#f6f8f2;}
   .p-vacio{text-align:center;color:var(--gris);font-style:italic;padding:1.2rem;}
+  td.p-obs{min-width:220px;}
+  .p-obs-input{width:100%;font-family:inherit;font-size:.88rem;padding:.32rem .4rem;
+    border:1px solid transparent;background:transparent;border-radius:3px;}
+  .p-obs-input:hover{border-color:var(--gris-borde);background:#fff;}
+  .p-obs-input:focus{outline:none;border-color:var(--oliva);background:#fff;}
+  tr.fila-ext{background:#fbf7e8!important;}
+  tr.fila-ext td{border-top:1px solid #e6d9a8;}
   .ext-tag{background:var(--amarillo);color:#4a3b00;font-size:.68rem;font-weight:bold;padding:1px 7px;border-radius:10px;margin-left:6px;letter-spacing:.5px;white-space:nowrap;}
   /* Anexo / Resumen */
   .anexo-head{border:1px solid var(--gris-borde);border-radius:6px;padding:.6rem .8rem;margin-bottom:1rem;background:#f7f8f3;}
@@ -310,6 +326,22 @@
     border:1px solid var(--gris-borde);border-radius:4px;background:#fbfcf9;}
   .modal-foot{display:flex;align-items:center;gap:.6rem;padding:.8rem 1rem;background:#f3f5ee;border-top:1px solid var(--gris-borde);}
 
+  /* ===== Grilla de claves por depto (Administrador) ===== */
+  .claves-grid{display:flex;flex-direction:column;gap:.45rem;max-height:44vh;overflow-y:auto;padding-right:.2rem;}
+  .clave-row{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;align-items:center;}
+  .clave-row label{font-size:.9rem;font-weight:bold;color:var(--verde-oscuro);}
+  .clave-row input{font-family:inherit;font-size:.95rem;padding:.42rem .5rem;
+    border:1px solid var(--gris-borde);border-radius:4px;background:#fbfcf9;}
+  .clave-row input:focus{outline:2px solid var(--oliva);border-color:var(--oliva);}
+
+  /* ===== Badges de estado (Panel Administrador) ===== */
+  .est{display:inline-block;padding:.15rem .6rem;border-radius:12px;font-size:.78rem;font-weight:bold;
+       background:var(--gris-claro);color:var(--gris);border:1px solid var(--gris-borde);}
+  .est-ok{background:#e6f2e8;color:var(--verde-ok);border-color:#bcd9c2;}
+  .est-no{background:#f6e5e5;color:var(--rojo);border-color:#dcc0c0;}
+  .est-pend{background:#f0efe6;color:#8a7d3e;border-color:#dcd6ba;}
+  .est-prog{background:#eef2e6;color:var(--verde-claro);border-color:#c9d4b6;}
+
   @media (max-width:600px){
     .titulos h1{font-size:1.05rem;}
     .selector-tipo button{padding:.5rem 1rem;font-size:.9rem;}
@@ -341,11 +373,6 @@
   </div>
 </header>
 
-<div class="selector-tipo hidden" id="selectorTipo">
-  <button type="button" id="btnInterno" class="activo" onclick="cambiarTipo('interno')">PERSONAL INTERNO</button>
-  <button type="button" id="btnExterno" onclick="cambiarTipo('externo')">PERSONAL EXTERNO AL CG V</button>
-</div>
-
 <main>
 
   <!-- ================= VISTA INICIO ================= -->
@@ -368,6 +395,10 @@
                  onkeydown="if(event.key==='Enter'){event.preventDefault();gateIngresar();}">
         </div>
         <button class="btn btn-guardar hidden" id="gateBtn" type="button" onclick="gateIngresar()">🔓 Ingresar</button>
+      </div>
+      <div class="gate-admin" id="gateAdminHint">
+        <button type="button" class="btn btn-nuevo" onclick="gmOpen()">🛡️ Ingresar como Administrador</button>
+        <span>Acceso total: ver, ingresar, corregir y eliminar en todos los deptos.</span>
       </div>
       <div class="gate-ok hidden" id="gateOk">
         <span>✓ Acceso concedido: <b id="gateDeptoActivo"></b></span>
@@ -397,8 +428,8 @@
         <button class="btn btn-cargar" type="button" onclick="irIngreso()">Abrir ingreso de personal</button>
       </div>
 
-      <!-- Módulo 3: Resumen / Anexo -->
-      <div class="card">
+      <!-- Módulo 3: Resumen / Anexo (solo admin) -->
+      <div class="card hidden" id="cardResumen">
         <span class="card-num">3</span>
         <div class="card-icon">📊</div>
         <h3>Resumen / Anexo</h3>
@@ -406,115 +437,132 @@
         <button class="btn btn-cargar" type="button" onclick="irAnexo()">Ver resumen</button>
       </div>
 
+      <!-- Módulo 4: Panel Administrador (solo admin) -->
+      <div class="card hidden" id="cardAdmin">
+        <span class="card-num">★</span>
+        <div class="card-icon">🛡️</div>
+        <h3>Panel Administrador</h3>
+        <p>Control depto por depto del aporcionamiento del día: quiénes ranchan, quiénes no y el total general.</p>
+        <button class="btn btn-cargar" type="button" onclick="irControl()">Abrir panel de control</button>
+      </div>
+
     </div>
   </section>
 
-  <!-- ================= VISTA INGRESAR PERSONAL ================= -->
+  <!-- ================= VISTA INGRESAR PERSONAL (Pantalla 1) ================= -->
   <div id="vistaIngreso" class="vista hidden">
+   <div class="ingreso-grid">
 
-  <!-- ================= PANEL INTERNO ================= -->
-  <section class="panel" id="panelInterno">
-    <h2>Parte de Aporcionamiento Diario — Personal Interno</h2>
-    <div class="panel-body">
+    <!-- ===== MÓDULO INTERNO (por Depto) ===== -->
+    <section class="panel" id="panelInterno">
+      <h2>Ingreso por Depto — Personal Interno</h2>
+      <div class="panel-body">
+        <input type="hidden" id="i_unidad" value="CG">
 
-      <div class="cabecera">
-        <div class="campo">
-          <label for="i_unidad">Unidad</label>
-          <input type="text" id="i_unidad" value="CG" placeholder="Ej: CG">
+        <div class="cabecera">
+          <div class="campo">
+            <label for="i_uni">Depto</label>
+            <select id="i_uni" onchange="cargarInterno(true)"></select>
+          </div>
         </div>
-        <div class="campo">
-          <label for="i_uni">Unidad Interna</label>
-          <input type="text" id="i_uni" list="dl-depto" placeholder="Seleccione depto…"
-                 oninput="propagarDepto('interno')" onchange="cargarInterno(true)">
-        </div>
-      </div>
 
-      <div class="tabla-wrap">
-        <table class="personal">
-          <thead>
-            <tr>
-              <th class="idx">N°</th>
-              <th>Categoría</th>
-              <th>Grado</th>
-              <th>Nombre</th>
-              <th>Depto</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="i_tbody"></tbody>
-        </table>
-      </div>
+        <div class="tabla-wrap">
+          <table class="personal">
+            <thead>
+              <tr>
+                <th class="idx">N°</th>
+                <th>Grado</th>
+                <th>Nombre</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="i_tbody"></tbody>
+          </table>
+        </div>
 
-      <div class="acciones">
-        <button class="btn btn-add" type="button" onclick="agregarFila('interno')">＋ Agregar fila</button>
-        <button class="btn btn-cargar" type="button" onclick="irParte()">📋 Ir a Parte</button>
-        <div class="spacer"></div>
-        <button class="btn btn-guardar" type="button" onclick="guardarInterno()">💾 Guardar datos</button>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- ================= PANEL EXTERNO ================= -->
-  <section class="panel hidden" id="panelExterno">
-    <h2>Parte de Aporcionamiento — Personal Externo al CG V (Comisión de Servicio)</h2>
-    <div class="panel-body">
-
-      <div class="cabecera">
-        <div class="campo">
-          <label for="e_unidad">Unidad a Cargo</label>
-          <input type="text" id="e_unidad" list="dl-depto" placeholder="Seleccione depto…"
-                 onchange="cargarExterno(true)">
-        </div>
-        <div class="campo">
-          <label for="e_origen">Unidad de Origen</label>
-          <input type="text" id="e_origen" list="dl-unidad" placeholder="Seleccione unidad…"
-                 oninput="propagarDepto('externo')">
-        </div>
-        <div class="campo">
-          <label for="e_actividad">Actividad</label>
-          <input type="text" id="e_actividad" value="COMISIÓN SERVICIO" placeholder="Ej: COMISIÓN SERVICIO">
-        </div>
-        <div class="campo">
-          <label for="e_desde">Desde</label>
-          <input type="date" id="e_desde" onchange="calcDias()">
-        </div>
-        <div class="campo">
-          <label for="e_hasta">Hasta</label>
-          <input type="date" id="e_hasta" onchange="calcDias()">
-        </div>
-        <div class="campo campo-dias">
-          <label for="e_totaldias">Total días</label>
-          <input type="text" id="e_totaldias" readonly value="0">
+        <div class="acciones">
+          <button class="btn btn-add" id="i_btnAdd" type="button" onclick="agregarFila('interno')">＋ Agregar fila</button>
+          <div class="spacer"></div>
+          <button class="btn btn-guardar" id="i_btnGuardar" type="button" onclick="guardarInterno()">💾 Guardar</button>
         </div>
       </div>
+    </section>
 
-      <div class="tabla-wrap">
-        <table class="personal">
-          <thead>
-            <tr>
-              <th class="idx">N°</th>
-              <th>Categoría</th>
-              <th>Grado</th>
-              <th>Nombre</th>
-              <th>Unidad de Origen</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="e_tbody"></tbody>
-        </table>
+    <!-- ===== MÓDULO EXTERNO ===== -->
+    <section class="panel" id="panelExterno">
+      <h2>Ingreso Personal Externo</h2>
+      <div class="panel-body">
+
+        <div class="cabecera">
+          <div class="campo">
+            <label for="e_unidad">Depto a Cargo</label>
+            <select id="e_unidad" onchange="cargarExterno(true)"></select>
+          </div>
+          <div class="campo">
+            <label for="e_origen">Unidad</label>
+            <select id="e_origen"></select>
+          </div>
+          <div class="campo">
+            <label for="e_actividad">Actividad</label>
+            <input type="text" id="e_actividad" value="COMISIÓN SERVICIO" placeholder="Ej: COMISIÓN SERVICIO">
+          </div>
+          <div class="campo">
+            <label for="e_periodo">Período</label>
+            <select id="e_periodo" onchange="ePeriodo()">
+              <option value="dia">Día</option>
+              <option value="rango">Desde – Hasta</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Período = Día (1 calendario) -->
+        <div class="cabecera" id="e_fechas_dia">
+          <div class="campo">
+            <label for="e_dia">Día</label>
+            <input type="date" id="e_dia">
+          </div>
+        </div>
+
+        <!-- Período = Desde–Hasta (2 calendarios + total días) -->
+        <div class="cabecera hidden" id="e_fechas_rango">
+          <div class="campo">
+            <label for="e_desde">Desde</label>
+            <input type="date" id="e_desde" onchange="calcDias()">
+          </div>
+          <div class="campo">
+            <label for="e_hasta">Hasta</label>
+            <input type="date" id="e_hasta" onchange="calcDias()">
+          </div>
+          <div class="campo campo-dias">
+            <label for="e_totaldias">Total días</label>
+            <input type="text" id="e_totaldias" readonly value="0">
+          </div>
+        </div>
+
+        <div class="tabla-wrap">
+          <table class="personal">
+            <thead>
+              <tr>
+                <th class="idx">N°</th>
+                <th>Grado</th>
+                <th>Nombre</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="e_tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="acciones">
+          <button class="btn btn-add" type="button" onclick="agregarFila('externo')">＋ Agregar fila</button>
+          <div class="spacer"></div>
+          <button class="btn btn-guardar" type="button" onclick="guardarExterno()">💾 Guardar</button>
+        </div>
+
       </div>
+    </section>
 
-      <div class="acciones">
-        <button class="btn btn-add" type="button" onclick="agregarFila('externo')">＋ Agregar fila</button>
-        <button class="btn btn-cargar" type="button" onclick="irParte()">📋 Ir a Parte</button>
-        <div class="spacer"></div>
-        <button class="btn btn-guardar" type="button" onclick="guardarExterno()">💾 Guardar datos</button>
-      </div>
-
-    </div>
-  </section>
-
+   </div>
   </div><!-- /vistaIngreso -->
 
   <!-- ================= VISTA PARTE DIARIO ================= -->
@@ -585,27 +633,18 @@
             <label for="a_fecha">Racionamiento del Personal para el</label>
             <input type="date" id="a_fecha" onchange="computeAnexo()">
           </div>
+          <div class="campo">
+            <label for="a_depto">Departamento</label>
+            <select id="a_depto" onchange="computeAnexo()"></select>
+          </div>
         </div>
 
         <div class="rot" style="margin:.4rem 0 .3rem;">a. Fuerza Racionada</div>
         <div class="tabla-wrap">
           <table class="personal anexo-tabla">
-            <thead>
-              <tr>
-                <th>Categoría</th>
-                <th class="num">Fuerza</th>
-                <th class="num">De otras Uds</th>
-                <th class="num">En otras Uds</th>
-                <th class="num">Total</th>
-              </tr>
-            </thead>
+            <thead id="anexo_thead"></thead>
             <tbody id="anexo_tbody"></tbody>
-            <tfoot>
-              <tr id="anexo_total">
-                <th>TOTAL</th>
-                <th class="num">-</th><th class="num">-</th><th class="num">-</th><th class="num">-</th>
-              </tr>
-            </tfoot>
+            <tfoot id="anexo_tfoot"></tfoot>
           </table>
         </div>
 
@@ -617,8 +656,69 @@
 
         <div class="aviso-futuro">
           Cuenta solo al personal con <b>Rancho SÍ</b> marcado y guardado en el Parte de esa fecha.
-          «Fuerza» = personal interno. «De otras Uds» = personal externo (comisión de servicio) vigente.
-          «En otras Uds» se llevará más adelante.
+          <b>CG</b> = personal interno de los deptos (según el filtro elegido). Cada columna de unidad
+          (4 BRIACO, DESACO…) cuenta el personal externo que viene de esa unidad. <b>Total</b> = suma por categoría.
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= VISTA CONTROL (Panel Administrador) ================= -->
+  <section id="vistaControl" class="vista hidden">
+    <div class="panel">
+      <h2>Panel Administrador — Control de Aporcionamiento</h2>
+      <div class="panel-body">
+
+        <div class="cabecera">
+          <div class="campo">
+            <label for="c_fecha">Fecha del aporcionamiento</label>
+            <input type="date" id="c_fecha" onchange="computeControl()">
+          </div>
+        </div>
+
+        <!-- Desglose general (arriba) -->
+        <div class="totales" id="c_totales"></div>
+
+        <div class="rot" style="margin:1.1rem 0 .3rem;font-weight:bold;color:var(--gris);text-transform:uppercase;font-size:.78rem;letter-spacing:.5px;">Control por departamento</div>
+        <div class="tabla-wrap">
+          <table class="personal anexo-tabla">
+            <thead>
+              <tr>
+                <th>Departamento</th>
+                <th class="num">En nómina</th>
+                <th class="num">Ranchan</th>
+                <th class="num">No ranchan</th>
+                <th class="num">Sin marcar</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="c_tbody"></tbody>
+            <tfoot><tr id="c_total"></tr></tfoot>
+          </table>
+        </div>
+
+        <div class="acciones">
+          <button class="btn btn-cargar" type="button" id="c_btnTodo" onclick="cToggleTodo()">👥 Ver todo el personal</button>
+          <div class="spacer"></div>
+        </div>
+
+        <div id="c_detalle" class="hidden">
+          <div class="rot" style="margin:1rem 0 .3rem;font-weight:bold;color:var(--gris);text-transform:uppercase;font-size:.78rem;letter-spacing:.5px;">Detalle de todo el personal</div>
+          <div class="tabla-wrap">
+            <table class="personal">
+              <thead>
+                <tr>
+                  <th class="idx">N°</th>
+                  <th>Depto</th>
+                  <th>Grado</th>
+                  <th>Nombre</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="c_detalle_tbody"></tbody>
+            </table>
+          </div>
         </div>
 
       </div>
@@ -722,23 +822,26 @@
 
       <!-- SECCIÓN CLAVES -->
       <div id="sec_claves" class="gm-sec hidden">
-        <p class="modal-nota">Defina la clave de acceso de cada departamento. Si un depto no tiene clave
-          definida, su clave provisional es <b>1234</b>.</p>
-        <div class="campo">
-          <label for="gm_claveDepto">Departamento</label>
-          <select id="gm_claveDepto" onchange="gmClaveCargar()"></select>
+        <!-- Gate: vuelve a pedir la clave de administrador para manipular las claves -->
+        <div id="claves_gate">
+          <p class="modal-nota">Por seguridad, ingrese nuevamente la <b>clave de administrador</b>
+            para poder editar las claves de acceso de los departamentos.</p>
+          <div class="gm-add">
+            <input type="password" id="claves_admin" placeholder="Clave de administrador"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();clavesDesbloquear();}">
+            <button class="btn btn-guardar" type="button" onclick="clavesDesbloquear()">🔓 Desbloquear</button>
+          </div>
         </div>
-        <div class="campo" style="margin-top:.6rem;">
-          <label for="gm_claveInput">Clave de este departamento</label>
-          <input type="text" id="gm_claveInput" placeholder="Ej: 4821"
-                 onkeydown="if(event.key==='Enter'){event.preventDefault();gmClaveGuardar();}">
+        <!-- Editor: todos los deptos con su casillero de clave al lado -->
+        <div id="claves_editor" class="hidden">
+          <p class="modal-nota">Ingrese la clave de cada departamento y presione <b>Guardar claves</b>.
+            Si deja uno en blanco, ese depto usa la provisional <b>1234</b>.</p>
+          <div id="gm_clavesGrid" class="claves-grid"></div>
+          <div class="gm-add" style="margin-top:.8rem;">
+            <div class="spacer"></div>
+            <button class="btn btn-guardar" type="button" onclick="gmClavesGuardarTodas()">💾 Guardar claves</button>
+          </div>
         </div>
-        <div class="gm-add" style="margin-top:.6rem;">
-          <div class="spacer"></div>
-          <button class="btn btn-guardar" type="button" onclick="gmClaveGuardar()">💾 Guardar clave</button>
-        </div>
-        <div class="rot" style="margin:.9rem 0 .3rem;">Deptos con clave definida</div>
-        <div id="gm_clavesLista" class="gm-list"></div>
       </div>
 
       <!-- SECCIÓN CLAVE ADMINISTRADOR -->
@@ -796,7 +899,11 @@ try {
   var _authReadyApor = false;
   firebase.auth().onAuthStateChanged(function(u){
     if(u){
-      if(!_authReadyApor){ _authReadyApor = true; marcarConexion(true, "Conectado"); }
+      if(!_authReadyApor){
+        _authReadyApor = true;
+        marcarConexion(true, "Conectado");
+        syncDesdeFirestore();   // la nube pasa a ser la fuente de datos (multi-equipo)
+      }
     } else {
       firebase.auth().signInAnonymously().catch(function(e){
         console.error("Auth anónima falló:", e);
@@ -807,6 +914,61 @@ try {
 } catch(e){
   marcarConexion(false, "Firebase no configurado");
   console.warn("Firebase no inicializado.", e);
+}
+
+/* ============================================================
+   SINCRONIZACIÓN CON FIRESTORE (la nube es la fuente real)
+   ------------------------------------------------------------
+   Al conectar, se escuchan en vivo las 3 colecciones y se vuelca
+   lo de la nube al cache local (localStorage), para que TODOS los
+   equipos vean lo mismo. Los tableros de solo-lectura (Control /
+   Anexo) se refrescan solos; las vistas de edición (Ingreso /
+   Parte) NO se refrescan en caliente para no pisar lo que el
+   usuario está escribiendo. En localhost la auth está bloqueada
+   por dominio, así que esto solo corre publicado en GitHub Pages.
+   ============================================================ */
+function refrescarVistaActual(){
+  if(!document.getElementById('vistaControl').classList.contains('hidden')) computeControl();
+  else if(!document.getElementById('vistaAnexo').classList.contains('hidden')) computeAnexo();
+}
+function syncDesdeFirestore(){
+  if(!db) return;
+  const escuchar = (coleccion, setFn)=>{
+    db.collection(coleccion).onSnapshot(function(snap){
+      const o = {}; snap.forEach(doc=> o[doc.id] = doc.data());
+      setFn(o);
+      refrescarVistaActual();
+    }, function(err){ console.warn('Sync '+coleccion+' falló:', err && err.code); });
+  };
+  escuchar('apor_interno', setNominas);
+  escuchar('apor_externo', setExternos);
+  escuchar('apor_partes',  pSetPartes);
+
+  // Configuración compartida (grados, deptos, unidades, claves, clave admin)
+  db.collection('apor_config').doc('global').onSnapshot(function(doc){
+    if(!doc.exists) return;
+    const c = doc.data() || {};
+    if(c.grados && Object.keys(c.grados).length) GRADOS = c.grados;
+    if(Array.isArray(c.deptos))   DEPTOS   = c.deptos;
+    if(Array.isArray(c.unidades)) UNIDADES = c.unidades;
+    if(c.claves && typeof c.claves==='object') CLAVES = c.claves;
+    if(c.admin) localStorage.setItem('apor_admin', c.admin);
+    // Persiste local directamente (NO via guardarXxxLS para no reescribir a la nube y evitar bucle)
+    localStorage.setItem('apor_grados',   JSON.stringify(GRADOS));
+    localStorage.setItem('apor_deptos',   JSON.stringify(DEPTOS));
+    localStorage.setItem('apor_unidades', JSON.stringify(UNIDADES));
+    localStorage.setItem('apor_claves',   JSON.stringify(CLAVES));
+    renderDatalists();
+    refrescarVistaActual();
+  }, function(err){ console.warn('Sync config falló:', err && err.code); });
+}
+// Vuelca la configuración actual a la nube (la usa solo el administrador al editar)
+function guardarConfigFS(){
+  if(!db) return;
+  db.collection('apor_config').doc('global').set({
+    grados: GRADOS, deptos: DEPTOS, unidades: UNIDADES, claves: CLAVES,
+    admin: (localStorage.getItem('apor_admin') || '199673')
+  }).catch(()=>{});
 }
 
 /* ============================================================
@@ -826,20 +988,38 @@ function cargarGrados(){
   try{ const s = localStorage.getItem('apor_grados'); if(s){ const o=JSON.parse(s); if(o && Object.keys(o).length) return o; } }catch(e){}
   return gradosPorDefecto();
 }
-function guardarGradosLS(){ localStorage.setItem('apor_grados', JSON.stringify(GRADOS)); }
+function guardarGradosLS(){ localStorage.setItem('apor_grados', JSON.stringify(GRADOS)); guardarConfigFS(); }
 function categorias(){ return Object.keys(GRADOS); }
-function slugCat(cat){ return 'dl-'+cat.replace(/[^A-Za-z0-9]/g,''); }
-function dlPara(cat){ return categorias().includes(cat) ? slugCat(cat) : slugCat(categorias()[0]); }
+// Categoría a la que pertenece un grado (para el resumen/anexo). La fila solo pide Grado.
+function gradoACategoria(g){
+  g = (g||'').trim();
+  for(const cat of categorias()){ if((GRADOS[cat]||[]).includes(g)) return cat; }
+  return '';
+}
+// <option>s de grado agrupados por categoría, para el desplegable de cada fila
+function gradoOptionsHTML(sel){
+  let html = '<option value="">— Grado —</option>';
+  categorias().forEach(cat=>{
+    const ops = (GRADOS[cat]||[]).map(g=>`<option value="${escAttr(g)}" ${g===sel?'selected':''}>${escAttr(g)}</option>`).join('');
+    if(ops) html += `<optgroup label="${escAttr(cat)}">${ops}</optgroup>`;
+  });
+  return html;
+}
 
-function renderDatalists(){
-  const cont = document.getElementById('datalists-container');
-  const dlCats = categorias().map(cat=>{
-    const ops = (GRADOS[cat]||[]).map(g=>`<option value="${escAttr(g)}"></option>`).join('');
-    return `<datalist id="${slugCat(cat)}">${ops}</datalist>`;
-  }).join('');
-  const dlDepto = `<datalist id="dl-depto">${(DEPTOS||[]).map(d=>`<option value="${escAttr(d)}"></option>`).join('')}</datalist>`;
-  const dlUni = `<datalist id="dl-unidad">${(UNIDADES||[]).map(u=>`<option value="${escAttr(u)}"></option>`).join('')}</datalist>`;
-  cont.innerHTML = dlCats + dlDepto + dlUni;
+// Rellena los desplegables de la Pantalla 1 (Depto interno, Depto a cargo, Unidad externa)
+function renderDatalists(){ fillIngresoSelects(); }
+function fillIngresoSelects(){
+  const optD = (DEPTOS||[]).map(d=>`<option value="${escAttr(d)}">${escAttr(d)}</option>`).join('');
+  const optU = (UNIDADES||[]).map(u=>`<option value="${escAttr(u)}">${escAttr(u)}</option>`).join('');
+  const set = (id, placeholder, ops)=>{
+    const el = document.getElementById(id); if(!el) return;
+    const cur = el.value;
+    el.innerHTML = `<option value="">${placeholder}</option>` + ops;
+    if(cur) el.value = cur;
+  };
+  set('i_uni',   '— Depto —',          optD);
+  set('e_unidad','— Depto a cargo —',  optD);
+  set('e_origen','— Unidad —',         optU);
 }
 
 /* ============================================================
@@ -854,7 +1034,7 @@ function cargarDeptos(){
   try{ const s = localStorage.getItem('apor_deptos'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) return a; } }catch(e){}
   return deptosPorDefecto();
 }
-function guardarDeptosLS(){ localStorage.setItem('apor_deptos', JSON.stringify(DEPTOS)); }
+function guardarDeptosLS(){ localStorage.setItem('apor_deptos', JSON.stringify(DEPTOS)); guardarConfigFS(); }
 
 /* ============================================================
    UNIDADES EXTERNAS (editables, persistidas en localStorage)
@@ -867,7 +1047,7 @@ function cargarUnidades(){
   try{ const s = localStorage.getItem('apor_unidades'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) return a; } }catch(e){}
   return unidadesPorDefecto();
 }
-function guardarUnidadesLS(){ localStorage.setItem('apor_unidades', JSON.stringify(UNIDADES)); }
+function guardarUnidadesLS(){ localStorage.setItem('apor_unidades', JSON.stringify(UNIDADES)); guardarConfigFS(); }
 
 /* ============================================================
    CONTROL DE TAMAÑO DE LETRA (estándar de mis páginas)
@@ -898,30 +1078,19 @@ function toast(msg, tipo='info'){
 }
 
 /* ============================================================
-   NAVEGACIÓN INTERNO / EXTERNO
-   ============================================================ */
-function cambiarTipo(tipo){
-  const esInt = tipo==='interno';
-  document.getElementById('panelInterno').classList.toggle('hidden', !esInt);
-  document.getElementById('panelExterno').classList.toggle('hidden', esInt);
-  document.getElementById('btnInterno').classList.toggle('activo', esInt);
-  document.getElementById('btnExterno').classList.toggle('activo', !esInt);
-}
-
-/* ============================================================
-   NAVEGACIÓN ENTRE VISTAS (Inicio / Ingreso / Parte)
+   NAVEGACIÓN ENTRE VISTAS (Inicio / Ingreso / Parte / Anexo)
    ============================================================ */
 function showVista(v){
   document.getElementById('vistaInicio').classList.toggle('hidden', v!=='inicio');
   document.getElementById('vistaIngreso').classList.toggle('hidden', v!=='ingreso');
   document.getElementById('vistaParte').classList.toggle('hidden', v!=='parte');
   document.getElementById('vistaAnexo').classList.toggle('hidden', v!=='anexo');
-  document.getElementById('selectorTipo').classList.toggle('hidden', v!=='ingreso');
+  document.getElementById('vistaControl').classList.toggle('hidden', v!=='control');
   document.getElementById('adminBtnWrap').classList.toggle('hidden', v!=='inicio');
-  if(v==='ingreso') cambiarTipo('interno');
   if(v==='inicio') poblarInicioDeptos();
   if(v==='parte') initParte();
   if(v==='anexo') initAnexo();
+  if(v==='control') initControl();
   window.scrollTo(0,0);
 }
 function poblarInicioDeptos(){
@@ -954,13 +1123,19 @@ function cargarClaves(){
   try{ const s = localStorage.getItem('apor_claves'); if(s){ const o=JSON.parse(s); if(o && typeof o==='object') return o; } }catch(e){}
   return {};
 }
-function guardarClavesLS(){ localStorage.setItem('apor_claves', JSON.stringify(CLAVES)); }
+function guardarClavesLS(){ localStorage.setItem('apor_claves', JSON.stringify(CLAVES)); guardarConfigFS(); }
 function claveDelDepto(d){ return CLAVES[d] || '1234'; } // 1234 por defecto si aún no se define
 
 let AUTH_DEPTO = '';
 function bloquearCards(lock){
   document.getElementById('cardsInicio').classList.toggle('locked', lock);
   document.getElementById('cardsHint').classList.toggle('hidden', !lock);
+  // Resumen/Anexo y Panel Administrador solo se ven con acceso admin
+  document.getElementById('cardResumen').classList.toggle('hidden', lock || !ADMIN_OK);
+  document.getElementById('cardAdmin').classList.toggle('hidden', lock || !ADMIN_OK);
+  // El botón "Ingresar como Administrador" se oculta cuando ya se es admin
+  const gah = document.getElementById('gateAdminHint');
+  if(gah) gah.classList.toggle('hidden', ADMIN_OK);
 }
 function gateDeptoElegido(){
   const d = document.getElementById('inicioDepto').value;
@@ -1023,22 +1198,39 @@ function gateSalir(){
 }
 function irIngreso(){
   if(!AUTH_DEPTO && !ADMIN_OK) return;
-  showVista('ingreso'); cambiarTipo('interno');
-  if(AUTH_DEPTO){
-    document.getElementById('i_uni').value = AUTH_DEPTO;
-    limpiarTabla('interno');                 // arranca limpio por depto
-    const d = buscarNomina(AUTH_DEPTO);
-    if(d){
-      document.getElementById('i_unidad').value = d.unidad || 'CG';
-      (d.personal||[]).forEach(p=> agregarFila('interno', p));
-    }
-    if(!document.querySelector('#i_tbody tr')) agregarFila('interno');
-    propagarDepto('interno');
+  showVista('ingreso');
+  fillIngresoSelects();                    // reconstruye los desplegables base
+  const iu = document.getElementById('i_uni');
+  const eu = document.getElementById('e_unidad');
+
+  if(ADMIN_OK){
+    // ADMIN: puede elegir cualquier depto (o «Todos» para ver la relación completa),
+    // editar, corregir y eliminar en todos lados.
+    iu.insertAdjacentHTML('afterbegin', '<option value="__ALL__">— Todos los deptos —</option>');
+    iu.disabled = false; eu.disabled = false;
+    const dep = (AUTH_DEPTO && DEPTOS.includes(AUTH_DEPTO)) ? AUTH_DEPTO : '';
+    iu.value = dep; eu.value = dep;
+    cargarInterno(true);                   // carga (o deja vacío) el depto elegido
+    cargarExterno(true);
+  } else {
+    // ENCARGADO: bloqueado a su propio depto, solo ve/ingresa lo suyo.
+    iu.value = AUTH_DEPTO; iu.disabled = true;
+    eu.value = AUTH_DEPTO; eu.disabled = true;
+    cargarInterno(true);
+    cargarExterno(true);
   }
 }
 function irParte(){
   if(!AUTH_DEPTO && !ADMIN_OK) return;
-  showVista('parte');
+  showVista('parte');   // initParte() puebla el selector de deptos
+  const sel = document.getElementById('p_depto');
+  if(ADMIN_OK){
+    sel.disabled = false;                 // el admin puede elegir cualquier depto o «Todos»
+  } else if(AUTH_DEPTO){
+    sel.value = AUTH_DEPTO;                // el encargado queda fijo en su depto
+    sel.disabled = true;
+  }
+  pCargar();
 }
 
 /* ============================================================
@@ -1047,6 +1239,11 @@ function irParte(){
 function pSig(p){ return (p.tipo||'int')+'|'+(p.depto||'')+'|'+(p.grado||'')+'|'+(p.nombre||''); }
 function pGetPartes(){ try{ return JSON.parse(localStorage.getItem('apor_partes'))||{}; }catch(e){ return {}; } }
 function pSetPartes(o){ localStorage.setItem('apor_partes', JSON.stringify(o)); }
+// Cada marca puede ser texto antiguo ('SI'/'NO') u objeto {r:'SI'|'NO', obs:'...'}
+function pRachoDe(v){ return v==null ? '' : (typeof v==='string' ? v : (v.r||'')); }
+function pObsDe(v){ return (v && typeof v==='object') ? (v.obs||'') : ''; }
+// 'aaaa-mm-dd' → 'dd-mm-aaaa'
+function fmtFecha(f){ if(!f) return ''; const p=f.split('-'); return p.length===3 ? p[2]+'-'+p[1]+'-'+p[0] : f; }
 // La comisión externa está vigente si la fecha del parte cae dentro de Desde/Hasta
 function comisionActiva(reg, fecha){
   if(!fecha) return true;
@@ -1087,12 +1284,16 @@ function pFilas(){
   const addExterno = (reg)=>{
     if(!comisionActiva(reg, fecha)) return;   // fuera de fechas de comisión → no aparece
     (reg.personal||[]).forEach(p=>{
-      const org = p.unidadOrigen || reg.unidadOrigen || '';
-      const act = reg.actividad || 'Comisión de Servicio';
-      const obs = 'EXT' + (org ? ' · '+org : '') + ' · ' + act;
+      const org = p.unidadOrigen || reg.unidadOrigen || 'otra unidad';
+      // Observación automática: de qué unidad es y hasta cuándo está en comisión
+      const unDia = (reg.periodo==='dia') || (reg.desde && reg.desde===reg.hasta);
+      const cuando = unDia
+        ? (reg.desde ? 'comisión el '+fmtFecha(reg.desde) : 'en comisión')
+        : (reg.hasta ? 'en comisión hasta el '+fmtFecha(reg.hasta) : 'en comisión');
+      const autoObs = 'De '+org+' · '+cuando;
       filas.push({
         categoria:p.categoria, grado:p.grado, nombre:p.nombre,
-        depto: reg.unidadACargo, tipo:'ext', origen: org, obs: obs
+        depto: reg.unidadACargo, tipo:'ext', origen: org, autoObs: autoObs
       });
     });
   };
@@ -1120,17 +1321,20 @@ function pCargar(){
     return;
   }
   tbody.innerHTML = filas.map((p,i)=>{
-    const s = guardado[pSig(p)] || '';
-    const obs = p.obs ? `<span class="ext-tag">${escAttr(p.obs)}</span>` : '';
-    return `<tr data-sig="${escAttr(pSig(p))}">
+    const cell = guardado[pSig(p)];
+    const s = pRachoDe(cell);
+    // Observación: la guardada manda; si no hay y es externo, la automática de comisión
+    const obsVal = pObsDe(cell) || (p.tipo==='ext' ? (p.autoObs||'') : '');
+    const tag = p.tipo==='ext' ? '<span class="ext-tag">EXT</span>' : '';
+    return `<tr data-sig="${escAttr(pSig(p))}"${p.tipo==='ext'?' class="fila-ext"':''}>
       <td class="idx">${i+1}</td>
       <td>${escAttr(p.categoria||'')}</td>
-      <td>${escAttr(p.grado||'')}</td>
+      <td>${escAttr(p.grado||'')}${tag}</td>
       <td>${escAttr(p.nombre||'')}</td>
       <td>${escAttr(p.depto||'')}</td>
       <td class="p-chk"><input type="checkbox" class="p-si" ${s==='SI'?'checked':''} onchange="pToggle(this,'SI')"></td>
       <td class="p-chk"><input type="checkbox" class="p-no" ${s==='NO'?'checked':''} onchange="pToggle(this,'NO')"></td>
-      <td class="p-obs">${obs}</td>
+      <td class="p-obs"><input class="p-obs-input" value="${escAttr(obsVal)}" placeholder="Observación…"></td>
     </tr>`;
   }).join('');
   pRecalc();
@@ -1166,8 +1370,10 @@ function pGuardar(){
   const map = partes[fecha] || {};
   trs.forEach(tr=>{
     const sig = tr.getAttribute('data-sig');
-    if(tr.querySelector('.p-si').checked) map[sig] = 'SI';
-    else if(tr.querySelector('.p-no').checked) map[sig] = 'NO';
+    const r = tr.querySelector('.p-si').checked ? 'SI'
+            : tr.querySelector('.p-no').checked ? 'NO' : '';
+    const obs = (tr.querySelector('.p-obs-input')?.value || '').trim();
+    if(r || obs) map[sig] = { r, obs };   // guarda racho + observación
     else delete map[sig];
   });
   partes[fecha] = map;
@@ -1198,48 +1404,180 @@ function irAnexo(){
 function initAnexo(){
   const f = document.getElementById('a_fecha');
   if(!f.value) f.value = new Date().toISOString().slice(0,10);
+  const sel = document.getElementById('a_depto');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="__ALL__">— Todos los deptos —</option>' +
+                  DEPTOS.map(d=>`<option value="${escAttr(d)}">${escAttr(d)}</option>`).join('');
+  sel.value = (cur && [...sel.options].some(o=>o.value===cur)) ? cur : '__ALL__';
   computeAnexo();
 }
-function computeAnexo(){
+// Reúne internos (CG) y externos (por unidad de origen) con Rancho SÍ, según fecha y depto elegido
+function anexoDatos(){
   const fecha = document.getElementById('a_fecha').value;
-  const marks = pGetPartes()[fecha] || {};       // marcas de rancho guardadas para esa fecha
-  const soloSI = p => marks[pSig(p)] === 'SI';    // solo cuenta si tiene Rancho SÍ
-
-  // Personal interno (fuerza propia) con Rancho SÍ
-  const internos = [];
-  Object.values(getNominas()).forEach(reg=> (reg.personal||[]).forEach(p=> internos.push({
-    categoria:p.categoria, grado:p.grado, nombre:p.nombre, depto:p.depto||reg.uniInterna, tipo:'int'
-  })));
-  // Personal externo (de otras Uds) vigente en la fecha con Rancho SÍ
-  const externos = [];
-  Object.values(getExternos()).forEach(reg=>{ if(comisionActiva(reg, fecha)) (reg.personal||[]).forEach(p=> externos.push({
-    categoria:p.categoria, grado:p.grado, nombre:p.nombre, depto:reg.unidadACargo, tipo:'ext'
-  })); });
-
-  const intSI = internos.filter(soloSI);
-  const extSI = externos.filter(soloSI);
+  const depSel = document.getElementById('a_depto').value || '__ALL__';
+  const marks = pGetPartes()[fecha] || {};
+  const siSI = p => pRachoDe(marks[pSig(p)]) === 'SI';
+  const matchDepto = d => depSel==='__ALL__' || keyNodo(d)===keyNodo(depSel);
+  const internos = [], externos = [];
+  Object.values(getNominas()).forEach(reg=>{
+    if(!matchDepto(reg.uniInterna)) return;
+    (reg.personal||[]).forEach(p=>{
+      const per = {categoria:p.categoria, grado:p.grado, nombre:p.nombre, depto:reg.uniInterna, tipo:'int'};
+      if(siSI(per)) internos.push(per);
+    });
+  });
+  Object.values(getExternos()).forEach(reg=>{
+    if(!matchDepto(reg.unidadACargo) || !comisionActiva(reg, fecha)) return;
+    (reg.personal||[]).forEach(p=>{
+      const per = {categoria:p.categoria, grado:p.grado, nombre:p.nombre, depto:reg.unidadACargo, tipo:'ext'};
+      if(siSI(per)){ per.origen = p.unidadOrigen || reg.unidadOrigen || '(sin unidad)'; externos.push(per); }
+    });
+  });
+  return {internos, externos};
+}
+function computeAnexo(){
+  const {internos, externos} = anexoDatos();
+  // Columnas de unidad = todas las configuradas + cualquiera presente en los datos
+  const unidades = UNIDADES.slice();
+  externos.forEach(p=>{ if(p.origen && !unidades.includes(p.origen)) unidades.push(p.origen); });
   const cell = v => v>0 ? v : '-';
-  let tF=0, tD=0, tE=0, tT=0;
-  document.getElementById('anexo_tbody').innerHTML = FILAS_RACION.map(fila=>{
-    const fuerza = intSI.filter(fila.match).length;
-    const deOtras = extSI.filter(fila.match).length;
-    const enOtras = 0;
-    const total = fuerza + deOtras + enOtras;
-    tF+=fuerza; tD+=deOtras; tE+=enOtras; tT+=total;
+
+  // Encabezado: Categoría | CG | (una por unidad) | Total
+  document.getElementById('anexo_thead').innerHTML =
+    `<tr><th>Categoría</th><th class="num">CG</th>`+
+    unidades.map(u=>`<th class="num">${escAttr(u)}</th>`).join('')+
+    `<th class="num">Total</th></tr>`;
+
+  // Totales por columna
+  let totCG=0, totGen=0; const totU = unidades.map(()=>0);
+  const body = FILAS_RACION.map(fila=>{
+    const cg = internos.filter(fila.match).length;
+    const perU = unidades.map(u=> externos.filter(p=> p.origen===u && fila.match(p)).length);
+    const total = cg + perU.reduce((a,b)=>a+b,0);
+    totCG += cg; totGen += total; perU.forEach((v,i)=> totU[i]+=v);
+    return `<tr><td>${fila.label}</td><td class="num">${cell(cg)}</td>`+
+           perU.map(v=>`<td class="num">${cell(v)}</td>`).join('')+
+           `<td class="num">${cell(total)}</td></tr>`;
+  }).join('');
+  document.getElementById('anexo_tbody').innerHTML = body;
+
+  document.getElementById('anexo_tfoot').innerHTML =
+    `<tr><th>TOTAL</th><th class="num">${cell(totCG)}</th>`+
+    totU.map(v=>`<th class="num">${cell(v)}</th>`).join('')+
+    `<th class="num">${cell(totGen)}</th></tr>`;
+}
+
+/* ============================================================
+   PANEL ADMINISTRADOR — Control depto por depto (solo admin)
+   ============================================================ */
+function irControl(){
+  if(!ADMIN_OK){ toast('Solo el administrador puede abrir el panel de control.', 'warn'); return; }
+  showVista('control');
+}
+function initControl(){
+  const f = document.getElementById('c_fecha');
+  if(!f.value) f.value = new Date().toISOString().slice(0,10);
+  document.getElementById('c_detalle').classList.add('hidden');
+  document.getElementById('c_btnTodo').textContent = '👥 Ver todo el personal';
+  computeControl();
+}
+// Lista de deptos = configurados + los que ya tienen datos (interno o externo), sin repetir
+function cListaDeptos(){
+  const map = new Map();
+  DEPTOS.forEach(d=> map.set(keyNodo(d), d));
+  Object.values(getNominas()).forEach(r=>{ if(r.uniInterna) map.set(keyNodo(r.uniInterna), r.uniInterna); });
+  Object.values(getExternos()).forEach(r=>{ if(r.unidadACargo) map.set(keyNodo(r.unidadACargo), r.unidadACargo); });
+  return [...map.values()];
+}
+// Todo el personal (interno + externo vigente) de un depto en una fecha, con la firma que usa el Parte
+function personalDeDepto(depto, fecha){
+  const k = keyNodo(depto), filas = [];
+  Object.values(getNominas()).forEach(reg=>{
+    if(keyNodo(reg.uniInterna)===k) (reg.personal||[]).forEach(p=> filas.push({
+      categoria:p.categoria, grado:p.grado, nombre:p.nombre, depto:reg.uniInterna, tipo:'int'
+    }));
+  });
+  Object.values(getExternos()).forEach(reg=>{
+    if(keyNodo(reg.unidadACargo)===k && comisionActiva(reg, fecha)) (reg.personal||[]).forEach(p=> filas.push({
+      categoria:p.categoria, grado:p.grado, nombre:p.nombre, depto:reg.unidadACargo, tipo:'ext'
+    }));
+  });
+  return filas;
+}
+function computeControl(){
+  const fecha = document.getElementById('c_fecha').value;
+  const marks = pGetPartes()[fecha] || {};
+  const deptos = cListaDeptos();
+  let TSI=0, TNO=0, TSM=0, TTOT=0;
+
+  const filasHtml = deptos.map(dep=>{
+    const gente = personalDeDepto(dep, fecha);
+    let si=0, no=0;
+    gente.forEach(p=>{ const s=pRachoDe(marks[pSig(p)]); if(s==='SI') si++; else if(s==='NO') no++; });
+    const tot = gente.length, sm = tot - si - no;
+    TSI+=si; TNO+=no; TSM+=sm; TTOT+=tot;
+    let estado, clase;
+    if(tot===0){ estado='Sin nómina'; clase=''; }
+    else if(si+no===0){ estado='Pendiente'; clase='est-pend'; }
+    else if(sm===0){ estado='Completo'; clase='est-ok'; }
+    else { estado='En progreso'; clase='est-prog'; }
     return `<tr>
-      <td>${fila.label}</td>
-      <td class="num">${cell(fuerza)}</td>
-      <td class="num">${cell(deOtras)}</td>
-      <td class="num">${cell(enOtras)}</td>
-      <td class="num">${cell(total)}</td>
+      <td>${escAttr(dep)}</td>
+      <td class="num">${tot||'-'}</td>
+      <td class="num">${si||'-'}</td>
+      <td class="num">${no||'-'}</td>
+      <td class="num">${sm||'-'}</td>
+      <td><span class="est ${clase}">${estado}</span></td>
     </tr>`;
   }).join('');
-  document.getElementById('anexo_total').innerHTML =
+  document.getElementById('c_tbody').innerHTML = filasHtml ||
+    '<tr><td colspan="6" class="p-vacio">No hay departamentos con datos.</td></tr>';
+
+  // Desglose general arriba: ranchan / no ranchan / total (suma de ambos)
+  document.getElementById('c_totales').innerHTML =
+    `<div class="chip ok">Ranchan (SÍ) <b>${TSI}</b></div>`+
+    `<div class="chip">No ranchan (NO) <b>${TNO}</b></div>`+
+    `<div class="chip"><b>TOTAL a preparar</b> <b>${TSI}</b></div>`+
+    `<div class="chip chip-cat">Marcados (SÍ+NO) <b>${TSI+TNO}</b></div>`+
+    `<div class="chip chip-cat">Sin marcar <b>${TSM}</b></div>`+
+    `<div class="chip chip-cat">Total en nómina <b>${TTOT}</b></div>`;
+
+  document.getElementById('c_total').innerHTML =
     `<th>TOTAL</th>`+
-    `<th class="num">${cell(tF)}</th>`+
-    `<th class="num">${cell(tD)}</th>`+
-    `<th class="num">${cell(tE)}</th>`+
-    `<th class="num">${cell(tT)}</th>`;
+    `<th class="num">${TTOT}</th>`+
+    `<th class="num">${TSI}</th>`+
+    `<th class="num">${TNO}</th>`+
+    `<th class="num">${TSM}</th>`+
+    `<th></th>`;
+
+  // Si el detalle está abierto, refréscalo también
+  if(!document.getElementById('c_detalle').classList.contains('hidden')) cRenderDetalle(marks);
+}
+function cToggleTodo(){
+  const box = document.getElementById('c_detalle');
+  const abierto = box.classList.toggle('hidden');   // devuelve true si quedó oculto
+  document.getElementById('c_btnTodo').textContent = abierto ? '👥 Ver todo el personal' : '🙈 Ocultar detalle';
+  if(!abierto){
+    const fecha = document.getElementById('c_fecha').value;
+    cRenderDetalle(pGetPartes()[fecha] || {});
+  }
+}
+function cRenderDetalle(marks){
+  const fecha = document.getElementById('c_fecha').value;
+  const filas = [];
+  cListaDeptos().forEach(dep=> personalDeDepto(dep, fecha).forEach(p=> filas.push(p)));
+  const badge = s => s==='SI' ? '<span class="est est-ok">Rancha</span>'
+                    : s==='NO' ? '<span class="est est-no">No rancha</span>'
+                    : '<span class="est est-pend">Sin marcar</span>';
+  document.getElementById('c_detalle_tbody').innerHTML = filas.length
+    ? filas.map((p,i)=>`<tr>
+        <td class="idx">${i+1}</td>
+        <td>${escAttr(p.depto||'')}</td>
+        <td>${escAttr(p.grado||'')}</td>
+        <td>${escAttr(p.nombre||'')}</td>
+        <td>${badge(pRachoDe(marks[pSig(p)]))}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" class="p-vacio">No hay personal registrado.</td></tr>';
 }
 
 /* ============================================================
@@ -1269,45 +1607,18 @@ function validaRut(rut){
    FILAS DE PERSONAL
    ============================================================ */
 function crearFila(pref, data){
-  data = data || {categoria:'OF', grado:'', depto:'', nombre:'', rut:'', racho:'NO'};
+  data = data || {grado:'', nombre:''};
   const tr = document.createElement('tr');
-  const esInt = (pref==='interno');
-
-  const cats = categorias();
-  if(!cats.includes(data.categoria)) data.categoria = cats[0];
-  const opCat = cats.map(c=>`<option value="${c}" ${c===data.categoria?'selected':''}>${c}</option>`).join('');
-
-  // Columna de "unidad" por fila: INTERNO=Depto (dl-depto, hereda de Unidad Interna);
-  // EXTERNO=Unidad de Origen (dl-unidad, hereda de Unidad de Origen)
-  const headerId = esInt ? 'i_uni' : 'e_origen';
-  const dlCol = esInt ? 'dl-depto' : 'dl-unidad';
-  let valCol = esInt ? (data.depto||'') : (data.unidadOrigen||'');
-  if(!valCol){ valCol = (document.getElementById(headerId)||{}).value || ''; }
-  const celdaDepto = `<td class="col-depto"><input class="f-depto" list="${dlCol}" value="${escAttr(valCol)}" placeholder="${esInt?'Depto':'Uni. origen'}"></td>`;
-
   tr.innerHTML = `
     <td class="idx"></td>
-    <td class="col-cat"><select class="f-cat">${opCat}</select></td>
-    <td class="col-grado"><input class="f-grado" list="${dlPara(data.categoria)}" value="${escAttr(data.grado)}" placeholder="Grado"></td>
+    <td class="col-grado"><select class="f-grado">${gradoOptionsHTML(data.grado||'')}</select></td>
     <td><input class="f-nombre" value="${escAttr(data.nombre)}" placeholder="Apellidos y nombres"></td>
-    ${celdaDepto}
     <td class="col-del"><button class="btn-del" type="button" title="Eliminar fila">✕</button></td>
   `;
-
-  const selCat = tr.querySelector('.f-cat');
-  const inGrado = tr.querySelector('.f-grado');
-  selCat.addEventListener('change', ()=>{ inGrado.setAttribute('list', dlPara(selCat.value)); recalc(pref); });
+  tr.querySelector('.f-grado').addEventListener('change', ()=> recalc(pref));
   tr.querySelector('.btn-del').addEventListener('click', ()=>{ tr.remove(); renumerar(pref); recalc(pref); });
-
   return tr;
 }
-function pintaRut(inp){
-  const v = inp.value.trim();
-  inp.classList.remove('rut-valido','rut-invalido');
-  if(!v) return;
-  inp.classList.add(validaRut(v)?'rut-valido':'rut-invalido');
-}
-function pintaRacho(sel){ sel.className = 'f-racho ' + (sel.value==='SI'?'racho-si':'racho-no'); }
 function escAttr(s){ return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
 function agregarFila(pref, data){
@@ -1326,33 +1637,12 @@ function borrarFila(pref){
   renumerar(pref); recalc(pref);
 }
 
-// Al fijar la unidad arriba, se repite en la columna de la tabla de todas las filas
-// INTERNO -> desde "Unidad Interna" (i_uni); EXTERNO -> desde "Unidad de Origen" (e_origen)
-function propagarDepto(pref){
-  pref = pref || 'interno';
-  const headerId = pref==='externo' ? 'e_origen' : 'i_uni';
-  const val = (document.getElementById(headerId).value||'').trim();
-  document.querySelectorAll('#'+pref[0]+'_tbody .f-depto').forEach(inp=> inp.value = val);
-}
-
 function leerPersonal(pref){
   const arr=[];
   document.querySelectorAll('#'+pref[0]+'_tbody tr').forEach(tr=>{
-    const deptoInp = tr.querySelector('.f-depto');
-    const rutInp = tr.querySelector('.f-rut');
-    const rachoSel = tr.querySelector('.f-racho');
-    const obj = {
-      categoria: tr.querySelector('.f-cat').value,
-      grado: tr.querySelector('.f-grado').value.trim(),
-      nombre: tr.querySelector('.f-nombre').value.trim()
-    };
-    if(deptoInp){
-      if(pref==='externo') obj.unidadOrigen = deptoInp.value.trim();
-      else                 obj.depto = deptoInp.value.trim();
-    }
-    if(rutInp)   obj.rut = rutInp.value.trim();
-    if(rachoSel) obj.racho = rachoSel.value;
-    arr.push(obj);
+    const grado  = tr.querySelector('.f-grado').value.trim();
+    const nombre = tr.querySelector('.f-nombre').value.trim();
+    arr.push({ categoria: gradoACategoria(grado), grado, nombre });
   });
   return arr;
 }
@@ -1391,16 +1681,13 @@ function recalc(pref){
    VALIDACIÓN COMÚN ANTES DE GUARDAR
    ============================================================ */
 function validarPersonal(pref){
-  const filas = leerPersonal(pref);
+  // Ignora filas totalmente vacías (sin grado ni nombre)
+  const filas = leerPersonal(pref).filter(f=> f.grado || f.nombre);
   if(filas.length===0){ toast('Agregue al menos una persona.', 'warn'); return null; }
   for(let i=0;i<filas.length;i++){
     const f = filas[i];
     if(!f.nombre){ toast('Fila '+(i+1)+': falta el nombre.', 'warn'); return null; }
-    if('rut' in f){ // solo externo trae RUT
-      if(!f.rut){ toast('Fila '+(i+1)+': falta el RUT.', 'warn'); return null; }
-      if(!validaRut(f.rut)){ toast('Fila '+(i+1)+': RUT inválido ('+f.rut+').', 'err'); return null; }
-      f.rut = formateaRut(f.rut);
-    }
+    if(!f.grado){  toast('Fila '+(i+1)+': falta el grado.', 'warn');  return null; }
   }
   return filas;
 }
@@ -1436,14 +1723,18 @@ function consolidarStore(getFn, setFn, campo){
 
 function guardarInterno(){
   const unidadInterna = document.getElementById('i_uni').value.trim();
-  if(!unidadInterna){ toast('Seleccione la Unidad Interna.', 'warn'); return; }
+  if(unidadInterna==='__ALL__'){ toast('«Todos los deptos» es solo lectura. Elija un depto para editar.', 'warn'); return; }
+  if(!unidadInterna){ toast('Seleccione el Depto.', 'warn'); return; }
   const unidad = document.getElementById('i_unidad').value.trim();
   const key = keyNodo(unidadInterna);
+  const existia = !!buscarNomina(unidadInterna);           // ¿ya había nómina guardada?
   const noms = getNominas();
   Object.keys(noms).forEach(kk=>{ if(keyNodo(noms[kk].uniInterna)===key) delete noms[kk]; }); // evita duplicados
 
-  // Sin personas con nombre → eliminar la nómina del depto
+  // Sin personas con nombre: NO borra en silencio (evita pérdida accidental de datos)
   if(leerPersonal('interno').filter(f=> f.nombre).length === 0){
+    if(!existia){ toast('Agregue al menos una persona con nombre.', 'warn'); return; }
+    if(!confirm('La nómina de '+unidadInterna+' quedará vacía y se ELIMINARÁ. ¿Continuar?')){ return; }
     setNominas(noms);
     if(db){ db.collection('apor_interno').doc(key).delete().catch(()=>{}); }
     toast('Nómina eliminada ('+unidadInterna+').', 'info');
@@ -1455,41 +1746,87 @@ function guardarInterno(){
   noms[key] = registro; setNominas(noms);
   if(db){ db.collection('apor_interno').doc(key).set(registro).catch(()=>{}); }
   toast('Nómina guardada ('+unidadInterna+').', 'ok');
-  limpiarFormInterno();  // se limpia todo; al volver a poner el depto se carga para editar
+  cargarInterno(true);  // recarga la nómina recién guardada (mantiene el depto)
 }
 function limpiarFormInterno(){
-  document.getElementById('i_uni').value = '';
+  // Mantiene el depto seleccionado (bloqueado para el encargado); solo vacía la tabla
   limpiarTabla('interno');
   agregarFila('interno');
 }
 
+// Solo lectura del interno: bloquea Agregar/Guardar (usado en modo «Todos» del admin)
+function internoModoLectura(on){
+  const add = document.getElementById('i_btnAdd');
+  const guardar = document.getElementById('i_btnGuardar');
+  if(add) add.disabled = on;
+  if(guardar) guardar.disabled = on;
+}
+// Muestra todo el personal de todos los deptos (solo lectura) — opción «Todos» del admin
+function renderInternoTodos(){
+  const tbody = document.getElementById('i_tbody');
+  const filas = [];
+  Object.values(getNominas()).forEach(reg=> (reg.personal||[]).forEach(p=>
+    filas.push({ grado:p.grado, nombre:p.nombre, depto:reg.uniInterna })));
+  tbody.innerHTML = filas.length
+    ? filas.map((p,i)=>`<tr>
+        <td class="idx">${i+1}</td>
+        <td>${escAttr(p.grado||'')}</td>
+        <td>${escAttr(p.nombre||'')} <span class="ext-tag">${escAttr(p.depto||'')}</span></td>
+        <td></td></tr>`).join('')
+    : '<tr><td colspan="4" class="p-vacio">No hay personal registrado en ningún depto.</td></tr>';
+}
 function cargarInterno(silencioso){
-  const unidadInterna = document.getElementById('i_uni').value.trim();
-  if(!unidadInterna){ if(!silencioso) toast('Seleccione la Unidad Interna.', 'warn'); return; }
-  const d = buscarNomina(unidadInterna);
-  if(!d){
-    if(!silencioso) toast('No hay nómina guardada para '+unidadInterna+'.', 'info');
-    return; // deja la tabla actual para llenarla
+  const val = document.getElementById('i_uni').value.trim();
+  // Modo admin «Todos los deptos»: relación completa de solo lectura
+  if(val==='__ALL__'){ internoModoLectura(true); renderInternoTodos(); return; }
+  internoModoLectura(false);
+  limpiarTabla('interno');                 // SIEMPRE limpia primero (evita que queden filas del depto anterior)
+  if(!val){ agregarFila('interno'); if(!silencioso) toast('Seleccione el Depto.', 'warn'); return; }
+  const d = buscarNomina(val);
+  if(d){
+    document.getElementById('i_unidad').value = d.unidad || 'CG';
+    (d.personal||[]).forEach(p=> agregarFila('interno', p));
   }
-  document.getElementById('i_unidad').value = d.unidad||'';
-  limpiarTabla('interno');
-  (d.personal||[]).forEach(p=> agregarFila('interno', p));
-  if((d.personal||[]).length===0) agregarFila('interno');
-  if(!silencioso) toast('Nómina cargada ('+unidadInterna+').', 'ok');
+  if(!document.querySelector('#i_tbody tr')) agregarFila('interno');
+  if(!silencioso) toast(d ? 'Nómina cargada ('+val+').' : 'Depto sin nómina aún: '+val, d?'ok':'info');
 }
 
 /* ============================================================
    EXTERNO — total días / listar / guardar / cargar / eliminar
    ============================================================ */
-function calcDias(){
+// Un solo desplegable "Período": Día (1 fecha) o Desde–Hasta (2 fechas + total)
+function ePeriodo(){
+  const modo = document.getElementById('e_periodo').value;
+  document.getElementById('e_fechas_dia').classList.toggle('hidden', modo!=='dia');
+  document.getElementById('e_fechas_rango').classList.toggle('hidden', modo!=='rango');
+  calcDias();
+}
+// Devuelve {desde, hasta, totalDias} según el modo elegido
+function eGetFechas(){
+  const modo = document.getElementById('e_periodo').value;
+  if(modo==='dia'){
+    const d = document.getElementById('e_dia').value;
+    return { desde:d, hasta:d, totalDias: d ? 1 : 0 };
+  }
   const d1 = document.getElementById('e_desde').value;
   const d2 = document.getElementById('e_hasta').value;
+  let total = 0;
+  if(d1 && d2){
+    const a = new Date(d1+'T00:00:00'), b = new Date(d2+'T00:00:00');
+    if(b >= a) total = Math.round((b-a)/86400000) + 1; // inclusivo
+  }
+  return { desde:d1, hasta:d2, totalDias: total };
+}
+function calcDias(){
+  const f = eGetFechas();
   const out = document.getElementById('e_totaldias');
-  if(!d1 || !d2){ out.value='0'; return; }
-  const a = new Date(d1+'T00:00:00'), b = new Date(d2+'T00:00:00');
-  if(b < a){ out.value='0'; toast('«Hasta» no puede ser anterior a «Desde».','warn'); return; }
-  const dias = Math.round((b-a)/86400000) + 1; // inclusivo
-  out.value = dias;
+  if(out) out.value = f.totalDias;
+  if(document.getElementById('e_periodo').value==='rango'){
+    const d1 = document.getElementById('e_desde').value, d2 = document.getElementById('e_hasta').value;
+    if(d1 && d2 && new Date(d2+'T00:00:00') < new Date(d1+'T00:00:00')){
+      toast('«Hasta» no puede ser anterior a «Desde».','warn');
+    }
+  }
 }
 
 function idExterno(unidad, desde, hasta){
@@ -1498,28 +1835,35 @@ function idExterno(unidad, desde, hasta){
 }
 
 function nuevoExterno(){
-  document.getElementById('e_unidad').value = '';
+  // Mantiene el Depto a Cargo seleccionado (bloqueado para el encargado); limpia el resto
   document.getElementById('e_origen').value = '';
   document.getElementById('e_actividad').value = 'COMISIÓN SERVICIO';
+  document.getElementById('e_periodo').value = 'dia';
+  document.getElementById('e_dia').value = '';
   document.getElementById('e_desde').value = '';
   document.getElementById('e_hasta').value = '';
   document.getElementById('e_totaldias').value = '0';
+  ePeriodo();
   limpiarTabla('externo'); agregarFila('externo'); recalc('externo');
 }
 
 function guardarExterno(){
   const unidad = document.getElementById('e_unidad').value.trim();
-  const desde = document.getElementById('e_desde').value;
-  const hasta = document.getElementById('e_hasta').value;
-  if(!unidad){ toast('Ingrese la Unidad a Cargo.', 'warn'); return; }
-  if(desde && hasta && new Date(hasta) < new Date(desde)){ toast('«Hasta» no puede ser anterior a «Desde».', 'warn'); return; }
+  if(!unidad){ toast('Seleccione el Depto a Cargo.', 'warn'); return; }
+  const per = eGetFechas();
+  if(per.desde && per.hasta && new Date(per.hasta+'T00:00:00') < new Date(per.desde+'T00:00:00')){
+    toast('«Hasta» no puede ser anterior a «Desde».', 'warn'); return;
+  }
 
   const key = keyNodo(unidad);
+  const existia = !!buscarExterno(unidad);                 // ¿ya había registro externo?
   const noms = getExternos();
   Object.keys(noms).forEach(kk=>{ if(keyNodo(noms[kk].unidadACargo)===key) delete noms[kk]; }); // evita duplicados
 
-  // Sin personas con nombre → eliminar el registro externo del depto
+  // Sin personas con nombre: NO borra en silencio (evita pérdida accidental de datos)
   if(leerPersonal('externo').filter(f=> f.nombre).length === 0){
+    if(!existia){ toast('Agregue al menos una persona con nombre.', 'warn'); return; }
+    if(!confirm('El registro externo de '+unidad+' quedará vacío y se ELIMINARÁ. ¿Continuar?')){ return; }
     setExternos(noms);
     if(db){ db.collection('apor_externo').doc(key).delete().catch(()=>{}); }
     toast('Registro externo eliminado ('+unidad+').', 'info');
@@ -1528,36 +1872,45 @@ function guardarExterno(){
   const personal = validarPersonal('externo');
   if(!personal) return;
 
-  calcDias();
-  const headerOrigen = document.getElementById('e_origen').value.trim();
-  personal.forEach(p=>{ if(!p.unidadOrigen) p.unidadOrigen = headerOrigen; }); // asegura origen por persona
   const registro = {
     unidadACargo: unidad,
-    unidadOrigen: headerOrigen,
+    unidadOrigen: document.getElementById('e_origen').value.trim(),
     actividad: document.getElementById('e_actividad').value.trim(),
-    desde, hasta,
-    totalDias: parseInt(document.getElementById('e_totaldias').value)||0,
+    periodo: document.getElementById('e_periodo').value,   // 'dia' | 'rango'
+    desde: per.desde, hasta: per.hasta,
+    totalDias: per.totalDias,
     personal,
     actualizado: new Date().toISOString()
   };
   noms[key] = registro; setExternos(noms);
   if(db){ db.collection('apor_externo').doc(key).set(registro).catch(()=>{}); }
   toast('Registro externo guardado ('+unidad+').', 'ok');
-  nuevoExterno();  // se limpia todo; al poner la Unidad a Cargo se carga para editar
+  nuevoExterno();  // se limpia todo; al elegir la Unidad a Cargo se carga para editar
 }
 function getExternos(){ try{ return JSON.parse(localStorage.getItem('apor_externos'))||{}; }catch(e){ return {}; } }
 function setExternos(o){ localStorage.setItem('apor_externos', JSON.stringify(o)); }
 
 function cargarExterno(silencioso){
   const unidad = document.getElementById('e_unidad').value.trim();
-  if(!unidad){ return; }
+  if(!unidad){ nuevoExterno(); return; }
   const d = buscarExterno(unidad);
-  if(!d){ if(!silencioso) toast('No hay registro externo para '+unidad+'.', 'info'); return; }
+  if(!d){                                   // depto sin externos → deja el formulario limpio (no filas de otro depto)
+    nuevoExterno();
+    if(!silencioso) toast('No hay registro externo para '+unidad+'.', 'info');
+    return;
+  }
   document.getElementById('e_origen').value = d.unidadOrigen||'';
   document.getElementById('e_actividad').value = d.actividad||'COMISIÓN SERVICIO';
-  document.getElementById('e_desde').value = d.desde||'';
-  document.getElementById('e_hasta').value = d.hasta||'';
-  calcDias();
+  // Restaura el modo de período guardado (o lo deduce: mismo día = 'dia')
+  const modo = d.periodo || ((d.desde && d.desde===d.hasta) ? 'dia' : 'rango');
+  document.getElementById('e_periodo').value = modo;
+  if(modo==='dia'){
+    document.getElementById('e_dia').value = d.desde||'';
+  } else {
+    document.getElementById('e_desde').value = d.desde||'';
+    document.getElementById('e_hasta').value = d.hasta||'';
+  }
+  ePeriodo();
   limpiarTabla('externo');
   (d.personal||[]).forEach(p=> agregarFila('externo', p));
   if((d.personal||[]).length===0) agregarFila('externo');
@@ -1629,7 +1982,7 @@ function gmSeccion(){
     gmRenderUnidades();
     document.getElementById('gm_newunidad').focus();
   } else if(v==='claves'){
-    gmClaveRender();
+    gmClaveInit();
   } else if(v==='admin'){
     document.getElementById('gm_adminInput').value = adminClave();
     document.getElementById('gm_adminInput').focus();
@@ -1639,37 +1992,44 @@ function gmAdminGuardar(){
   const val = document.getElementById('gm_adminInput').value.trim();
   if(!val){ toast('Ingrese una clave de administrador.', 'warn'); return; }
   localStorage.setItem('apor_admin', val);
+  guardarConfigFS();
   toast('Clave de administrador actualizada.', 'ok');
 }
-function gmClaveRender(){
-  const sel = document.getElementById('gm_claveDepto');
-  const cur = sel.value;
-  sel.innerHTML = DEPTOS.map(d=>`<option value="${escAttr(d)}">${escAttr(d)}</option>`).join('');
-  if(cur && DEPTOS.includes(cur)) sel.value = cur;
-  gmClaveCargar();
-  const lista = document.getElementById('gm_clavesLista');
-  const def = DEPTOS.filter(d=>CLAVES[d]);
-  lista.innerHTML = def.length
-    ? def.map(d=>`<span class="gm-grado">${escAttr(d)}<button type="button" title="Quitar clave" onclick="gmClaveBorrar('${escAttr(d)}')">✕</button></span>`).join('')
-    : '<span class="gm-vacio">Ninguno aún (todos usan 1234).</span>';
+// Al entrar a la sección Claves siempre arranca BLOQUEADA (re-pide clave admin)
+function gmClaveInit(){
+  document.getElementById('claves_gate').classList.remove('hidden');
+  document.getElementById('claves_editor').classList.add('hidden');
+  document.getElementById('claves_admin').value = '';
+  setTimeout(()=> document.getElementById('claves_admin').focus(), 40);
 }
-function gmClaveCargar(){
-  const d = document.getElementById('gm_claveDepto').value;
-  document.getElementById('gm_claveInput').value = CLAVES[d] || '';
+// Verifica la clave de administrador y, si es correcta, muestra el editor de todas las claves
+function clavesDesbloquear(){
+  const val = document.getElementById('claves_admin').value;
+  if(val !== adminClave()){ toast('Clave de administrador incorrecta.', 'err'); return; }
+  document.getElementById('claves_gate').classList.add('hidden');
+  document.getElementById('claves_editor').classList.remove('hidden');
+  gmClavesGridRender();
 }
-function gmClaveGuardar(){
-  const d = document.getElementById('gm_claveDepto').value;
-  const val = document.getElementById('gm_claveInput').value.trim();
-  if(!d){ return; }
-  if(!val){ toast('Ingrese una clave.', 'warn'); return; }
-  CLAVES[d] = val;
-  guardarClavesLS(); gmClaveRender();
-  toast('Clave guardada para '+d+'.', 'ok');
+// Dibuja todos los deptos, cada uno con su casillero de clave (izq: depto, der: clave)
+function gmClavesGridRender(){
+  const grid = document.getElementById('gm_clavesGrid');
+  if(DEPTOS.length===0){ grid.innerHTML = '<span class="gm-vacio">No hay departamentos. Agréguelos en la sección «Deptos».</span>'; return; }
+  grid.innerHTML = DEPTOS.map((d,i)=>`
+    <div class="clave-row">
+      <label for="clave_i_${i}">${escAttr(d)}</label>
+      <input type="text" id="clave_i_${i}" data-depto="${escAttr(d)}"
+             value="${escAttr(CLAVES[d]||'')}" placeholder="1234 (por defecto)">
+    </div>`).join('');
 }
-function gmClaveBorrar(d){
-  delete CLAVES[d];
-  guardarClavesLS(); gmClaveRender();
-  toast('Clave de '+d+' eliminada (vuelve a 1234).', 'info');
+// Guarda de una sola vez todas las claves ingresadas (en blanco = vuelve a 1234)
+function gmClavesGuardarTodas(){
+  document.querySelectorAll('#gm_clavesGrid input[data-depto]').forEach(inp=>{
+    const d = inp.getAttribute('data-depto');
+    const val = inp.value.trim();
+    if(val) CLAVES[d] = val; else delete CLAVES[d];
+  });
+  guardarClavesLS();   // persiste local + sincroniza a la nube
+  toast('Claves de acceso guardadas.', 'ok');
 }
 function gmRenderDeptos(){
   const cont = document.getElementById('gm_deptos');
@@ -1763,6 +2123,7 @@ function gmReset(){
   consolidarStore(getExternos, setExternos, 'unidadACargo'); // limpia duplicados externos
   agregarFila('interno');
   agregarFila('externo');
+  ePeriodo();                       // muestra el calendario según el período por defecto (Día)
   recalc('interno'); recalc('externo');
   showVista('inicio');
 })();
