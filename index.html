@@ -991,6 +991,20 @@ function syncDesdeFirestore(){
     if(mergeConfig(doc.data() || {})) refrescarVistaActual();
   }, function(err){ console.warn('Sync config falló:', err && err.code); });
 }
+// Guarda en la nube CON CONFIRMACIÓN visible: el usuario sabe si quedó respaldado o solo local.
+function guardarNube(coleccion, id, registro, etiqueta){
+  const et = etiqueta ? ' ('+etiqueta+')' : '';
+  if(!db){ toast('Guardado en este equipo'+et+'. La nube se activa en el sitio publicado.', 'warn'); return; }
+  toast('Guardando…'+et, 'info');
+  db.collection(coleccion).doc(id).set(registro)
+    .then(function(){ toast('✅ Guardado y respaldado en la nube'+et, 'ok'); })
+    .catch(function(e){
+      console.warn('Guardar nube falló:', e && e.code);
+      toast('⚠ Guardado en este equipo'+et+', pero NO se subió a la nube. Revise conexión y reintente.', 'err');
+    });
+}
+function borrarNube(coleccion, id){ if(db) db.collection(coleccion).doc(id).delete().catch(()=>{}); }
+
 // Vuelca la configuración actual a la nube (la usa solo el administrador al editar)
 function guardarConfigFS(){
   if(!db) return;
@@ -1407,8 +1421,7 @@ function pGuardar(){
   });
   partes[fecha] = map;
   pSetPartes(partes);
-  if(db){ db.collection('apor_partes').doc(fecha).set(map).catch(()=>{}); }
-  toast('Parte del '+fecha+' guardado.', 'ok');
+  guardarNube('apor_partes', fecha, map, 'parte '+fecha);   // confirma si llegó a la nube
 }
 
 /* ============================================================
@@ -1765,7 +1778,7 @@ function guardarInterno(){
     if(!existia){ toast('Agregue al menos una persona con nombre.', 'warn'); return; }
     if(!confirm('La nómina de '+unidadInterna+' quedará vacía y se ELIMINARÁ. ¿Continuar?')){ return; }
     setNominas(noms);
-    if(db){ db.collection('apor_interno').doc(key).delete().catch(()=>{}); }
+    borrarNube('apor_interno', key);
     toast('Nómina eliminada ('+unidadInterna+').', 'info');
     limpiarFormInterno(); return;
   }
@@ -1773,8 +1786,7 @@ function guardarInterno(){
   if(!personal) return;
   const registro = { unidad, uniInterna: unidadInterna, personal, actualizado: new Date().toISOString() };
   noms[key] = registro; setNominas(noms);
-  if(db){ db.collection('apor_interno').doc(key).set(registro).catch(()=>{}); }
-  toast('Nómina guardada ('+unidadInterna+').', 'ok');
+  guardarNube('apor_interno', key, registro, unidadInterna);   // confirma si llegó a la nube
   cargarInterno(true);  // recarga la nómina recién guardada (mantiene el depto)
 }
 function limpiarFormInterno(){
@@ -1894,7 +1906,7 @@ function guardarExterno(){
     if(!existia){ toast('Agregue al menos una persona con nombre.', 'warn'); return; }
     if(!confirm('El registro externo de '+unidad+' quedará vacío y se ELIMINARÁ. ¿Continuar?')){ return; }
     setExternos(noms);
-    if(db){ db.collection('apor_externo').doc(key).delete().catch(()=>{}); }
+    borrarNube('apor_externo', key);
     toast('Registro externo eliminado ('+unidad+').', 'info');
     nuevoExterno(); return;
   }
@@ -1912,8 +1924,7 @@ function guardarExterno(){
     actualizado: new Date().toISOString()
   };
   noms[key] = registro; setExternos(noms);
-  if(db){ db.collection('apor_externo').doc(key).set(registro).catch(()=>{}); }
-  toast('Registro externo guardado ('+unidad+').', 'ok');
+  guardarNube('apor_externo', key, registro, unidad);   // confirma si llegó a la nube
   nuevoExterno();  // se limpia todo; al elegir la Unidad a Cargo se carga para editar
 }
 function getExternos(){ try{ return JSON.parse(localStorage.getItem('apor_externos'))||{}; }catch(e){ return {}; } }
