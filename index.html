@@ -917,49 +917,78 @@ try {
 }
 
 /* ============================================================
-   SINCRONIZACIÓN CON FIRESTORE (la nube es la fuente real)
+   SINCRONIZACIÓN CON FIRESTORE  —  SOLO SUMA, NUNCA BORRA
    ------------------------------------------------------------
-   Al conectar, se escuchan en vivo las 3 colecciones y se vuelca
-   lo de la nube al cache local (localStorage), para que TODOS los
-   equipos vean lo mismo. Los tableros de solo-lectura (Control /
-   Anexo) se refrescan solos; las vistas de edición (Ingreso /
-   Parte) NO se refrescan en caliente para no pisar lo que el
-   usuario está escribiendo. En localhost la auth está bloqueada
-   por dominio, así que esto solo corre publicado en GitHub Pages.
+   REGLA DE ORO: la nube NUNCA elimina ni reemplaza en bloque lo
+   que hay en localStorage. Solo AGREGA lo que falte y ACTUALIZA
+   por fecha de modificación. Así ningún equipo pierde datos si la
+   nube está vacía o desactualizada, y si tus registros siguen en
+   Firestore, se recuperan solos. Las deleciones NO se propagan
+   (preferimos conservar de más que borrar de menos).
+   En localhost la auth está bloqueada por dominio; esto solo corre
+   publicado en GitHub Pages.
    ============================================================ */
 function refrescarVistaActual(){
   if(!document.getElementById('vistaControl').classList.contains('hidden')) computeControl();
   else if(!document.getElementById('vistaAnexo').classList.contains('hidden')) computeAnexo();
 }
-function syncDesdeFirestore(){
-  if(!db) return;
-  const escuchar = (coleccion, setFn)=>{
-    db.collection(coleccion).onSnapshot(function(snap){
-      const o = {}; snap.forEach(doc=> o[doc.id] = doc.data());
-      setFn(o);
-      refrescarVistaActual();
-    }, function(err){ console.warn('Sync '+coleccion+' falló:', err && err.code); });
-  };
-  escuchar('apor_interno', setNominas);
-  escuchar('apor_externo', setExternos);
-  escuchar('apor_partes',  pSetPartes);
-
-  // Configuración compartida (grados, deptos, unidades, claves, clave admin)
-  db.collection('apor_config').doc('global').onSnapshot(function(doc){
-    if(!doc.exists) return;
-    const c = doc.data() || {};
-    if(c.grados && Object.keys(c.grados).length) GRADOS = c.grados;
-    if(Array.isArray(c.deptos))   DEPTOS   = c.deptos;
-    if(Array.isArray(c.unidades)) UNIDADES = c.unidades;
-    if(c.claves && typeof c.claves==='object') CLAVES = c.claves;
-    if(c.admin) localStorage.setItem('apor_admin', c.admin);
-    // Persiste local directamente (NO via guardarXxxLS para no reescribir a la nube y evitar bucle)
-    localStorage.setItem('apor_grados',   JSON.stringify(GRADOS));
+// Une {id:registro}: agrega los que faltan y actualiza si la nube es más reciente. Nunca quita.
+function mergeRegs(getFn, setFn, cloud){
+  const local = getFn(); let cambios = false;
+  Object.keys(cloud||{}).forEach(k=>{
+    const c = cloud[k], l = local[k];
+    if(!l || (c && (c.actualizado||'') > (l.actualizado||''))){ local[k] = c; cambios = true; }
+  });
+  if(cambios) setFn(local);
+  return cambios;
+}
+// Une partes {fecha:{sig:val}}: agrega fechas/marcas que falten. No pisa marcas locales existentes.
+function mergePartes(cloud){
+  const local = pGetPartes(); let cambios = false;
+  Object.keys(cloud||{}).forEach(f=>{
+    if(!local[f]){ local[f] = cloud[f]; cambios = true; return; }
+    Object.keys(cloud[f]||{}).forEach(sig=>{
+      if(!(sig in local[f])){ local[f][sig] = cloud[f][sig]; cambios = true; }
+    });
+  });
+  if(cambios) pSetPartes(local);
+  return cambios;
+}
+// Une la configuración por UNIÓN (deptos/unidades/grados/claves): nunca quita lo local.
+function mergeConfig(c){
+  let cambios = false;
+  if(Array.isArray(c.deptos))   c.deptos.forEach(d=>{ if(!DEPTOS.includes(d)){ DEPTOS.push(d); cambios=true; } });
+  if(Array.isArray(c.unidades)) c.unidades.forEach(u=>{ if(!UNIDADES.includes(u)){ UNIDADES.push(u); cambios=true; } });
+  if(c.grados) Object.keys(c.grados).forEach(cat=>{
+    if(!GRADOS[cat]) GRADOS[cat] = [];
+    (c.grados[cat]||[]).forEach(g=>{ if(!GRADOS[cat].includes(g)){ GRADOS[cat].push(g); cambios=true; } });
+  });
+  if(c.claves) Object.keys(c.claves).forEach(d=>{ if(!(d in CLAVES)){ CLAVES[d] = c.claves[d]; cambios=true; } });
+  if(cambios){
     localStorage.setItem('apor_deptos',   JSON.stringify(DEPTOS));
     localStorage.setItem('apor_unidades', JSON.stringify(UNIDADES));
+    localStorage.setItem('apor_grados',   JSON.stringify(GRADOS));
     localStorage.setItem('apor_claves',   JSON.stringify(CLAVES));
     renderDatalists();
-    refrescarVistaActual();
+  }
+  return cambios;
+}
+function syncDesdeFirestore(){
+  if(!db) return;
+  const escuchar = (coleccion, aplicar)=>{
+    db.collection(coleccion).onSnapshot(function(snap){
+      const o = {}; snap.forEach(doc=> o[doc.id] = doc.data());
+      if(aplicar(o)) refrescarVistaActual();
+    }, function(err){ console.warn('Sync '+coleccion+' falló:', err && err.code); });
+  };
+  escuchar('apor_interno', o=> mergeRegs(getNominas, setNominas, o));
+  escuchar('apor_externo', o=> mergeRegs(getExternos, setExternos, o));
+  escuchar('apor_partes',  o=> mergePartes(o));
+
+  // Configuración compartida (grados, deptos, unidades, claves): SOLO UNIÓN
+  db.collection('apor_config').doc('global').onSnapshot(function(doc){
+    if(!doc.exists) return;
+    if(mergeConfig(doc.data() || {})) refrescarVistaActual();
   }, function(err){ console.warn('Sync config falló:', err && err.code); });
 }
 // Vuelca la configuración actual a la nube (la usa solo el administrador al editar)
