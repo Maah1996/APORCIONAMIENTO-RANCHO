@@ -950,6 +950,7 @@
     </div>
     <div class="modal-foot">
       <button class="btn btn-nuevo" type="button" onclick="gmReset()">↺ Restaurar por defecto</button>
+      <button class="btn btn-cargar" type="button" onclick="subirConfigNube()" title="Sube deptos, unidades, grados y claves a la nube para que los vean todos los equipos">⬆ Subir configuración a la nube</button>
       <div class="spacer"></div>
       <button class="btn btn-guardar" type="button" onclick="gmClose()">✔ Listo</button>
     </div>
@@ -1102,6 +1103,23 @@ function guardarNube(coleccion, id, registro, etiqueta){
     });
 }
 function borrarNube(coleccion, id){ if(db) db.collection(coleccion).doc(id).delete().catch(()=>{}); }
+
+// Sube TODA la configuración local (deptos, unidades, grados, claves) a la nube,
+// con confirmación visible. Úsela una vez desde el equipo que tiene la lista completa
+// (normalmente el PC) para que todos los demás equipos reciban los mismos deptos.
+function subirConfigNube(){
+  if(!db){ toast('La nube solo funciona en el sitio publicado (github.io).', 'warn'); return; }
+  toast('Subiendo configuración a la nube…', 'info');
+  db.collection('apor_config').doc('global').set({
+    grados: GRADOS, deptos: DEPTOS, unidades: UNIDADES, claves: CLAVES,
+    admin: (localStorage.getItem('apor_admin') || '199673')
+  })
+  .then(function(){ toast('✅ Configuración subida: '+DEPTOS.length+' deptos y '+UNIDADES.length+' unidades ya están en la nube.', 'ok'); })
+  .catch(function(e){
+    console.warn('Subir config falló:', e && e.code);
+    toast('⚠ No se pudo subir ('+(e&&e.code)+'). Verifique que la regla apor_config esté publicada en Firestore.', 'err');
+  });
+}
 
 // Vuelca la configuración actual a la nube (la usa solo el administrador al editar)
 function guardarConfigFS(){
