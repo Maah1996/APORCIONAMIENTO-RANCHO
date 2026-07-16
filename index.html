@@ -342,9 +342,98 @@
   .est-pend{background:#f0efe6;color:#8a7d3e;border-color:#dcd6ba;}
   .est-prog{background:#eef2e6;color:var(--verde-claro);border-color:#c9d4b6;}
 
+  /* ============================================================
+     RESPONSIVE PROFESIONAL  —  móvil · tablet · escritorio
+     Solo estilos: no cambia ninguna lógica ni el HTML generado.
+     ============================================================ */
+
+  /* Scroll horizontal de tablas: suave, con barra fina y sombra
+     lateral que avisa que la tabla continúa hacia el lado. */
+  .tabla-wrap{
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+    scrollbar-color:var(--gris-borde) transparent;
+    background:
+      linear-gradient(90deg, #fff 30%, rgba(255,255,255,0)) left / 22px 100% no-repeat,
+      linear-gradient(90deg, rgba(255,255,255,0), #fff 70%) right / 22px 100% no-repeat,
+      linear-gradient(90deg, rgba(0,0,0,.10), rgba(0,0,0,0)) left / 10px 100% no-repeat,
+      linear-gradient(90deg, rgba(0,0,0,0), rgba(0,0,0,.10)) right / 10px 100% no-repeat;
+    background-attachment:local, local, scroll, scroll;
+  }
+  .tabla-wrap::-webkit-scrollbar{height:9px;}
+  .tabla-wrap::-webkit-scrollbar-thumb{background:var(--gris-borde);border-radius:9px;}
+  .tabla-wrap::-webkit-scrollbar-thumb:hover{background:var(--oliva);}
+
+  /* Columna N° fija al desplazar la tabla: nunca se pierde la referencia de fila. */
+  table.personal thead th.idx{position:sticky;left:0;z-index:3;background:var(--verde-claro);}
+  table.personal tbody td.idx{position:sticky;left:0;z-index:1;background:#eef2e6;}
+  table.personal tbody tr:nth-child(even) td.idx{background:#e4ead9;}
+
+  /* ---- Tablet / pantallas medianas ---- */
+  @media (max-width:768px){
+    main{padding:0 .8rem 2.5rem;}
+    header.inst{padding:.5rem .8rem;gap:.5rem .7rem;}
+    .titulos h1{font-size:1.1rem;}
+    .panel > h2{font-size:1rem;}
+    .inicio-hero h2{font-size:1.3rem;}
+  }
+
+  /* ---- Móvil ---- */
   @media (max-width:600px){
-    .titulos h1{font-size:1.05rem;}
-    .selector-tipo button{padding:.5rem 1rem;font-size:.9rem;}
+    main{padding:0 .6rem 2.5rem;}
+
+    /* Header compacto y ordenado: título arriba, controles en fila que envuelve */
+    header.inst{padding:.5rem .6rem;gap:.4rem .5rem;}
+    .titulos{flex:1 1 100%;min-width:0;}
+    .titulos h1{font-size:1.02rem;letter-spacing:.3px;}
+    .estado{order:4;font-size:.72rem;}
+    .fontctrl{gap:.25rem;}
+    .fontctrl span{display:none;}                 /* la etiqueta "Letra" ocupa espacio innecesario */
+    .fontctrl button{padding:.4rem .6rem;min-height:38px;min-width:38px;font-size:.95rem;}
+
+    .selector-tipo button{padding:.55rem 1rem;font-size:.9rem;}
+    .inicio-hero{padding:1rem .6rem .2rem;}
+    .inicio-hero h2{font-size:1.18rem;}
+    .cards{gap:1rem;padding:1rem .2rem 1.6rem;}
+
+    /* Tarjetas del inicio en una sola columna */
+    .cards{grid-template-columns:1fr;}
+
+    /* Objetivos táctiles ≥44px y letra ≥16px (evita el zoom automático de iOS) */
+    .campo input,.campo select,
+    .cargar-existente input,.cargar-existente select{
+      font-size:max(16px,.95rem);padding:.55rem .6rem;
+    }
+    table.personal input,table.personal select{
+      font-size:max(16px,.9rem);padding:.5rem .4rem;
+    }
+    .p-obs-input{font-size:max(16px,.88rem);}
+    .btn{padding:.6rem 1rem;min-height:44px;}
+    .selector-tipo button{min-height:44px;}
+    .btn-del{width:38px;height:38px;font-size:1.15rem;}
+    td.p-chk input[type=checkbox]{width:24px;height:24px;}
+
+    /* Botón "Guardar" ocupa el ancho para que sea fácil de tocar */
+    .acciones .btn-guardar{flex:1 1 100%;justify-content:center;}
+
+    /* Chips de totales legibles */
+    .chip{font-size:.82rem;padding:.4rem .8rem;}
+
+    /* Modales a ancho completo cómodo */
+    .modal-overlay{padding:.6rem;align-items:flex-start;}
+    .modal{max-width:100%;margin-top:1.2rem;}
+    .clave-row{grid-template-columns:1fr;gap:.2rem;margin-bottom:.4rem;}
+    .gm-add{flex-wrap:wrap;}
+    .gm-add .btn{width:100%;}
+
+    footer{padding:1rem .6rem;}
+  }
+
+  /* ---- Móvil muy angosto ---- */
+  @media (max-width:380px){
+    .titulos h1{font-size:.95rem;}
+    .selector-tipo button{padding:.5rem .7rem;font-size:.85rem;}
+    .card{padding:1.1rem;}
   }
 </style>
 </head>
