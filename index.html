@@ -1021,6 +1021,15 @@ function refrescarVistaActual(){
   if(!document.getElementById('vistaControl').classList.contains('hidden')) computeControl();
   else if(!document.getElementById('vistaAnexo').classList.contains('hidden')) computeAnexo();
 }
+// Tras sincronizar la configuración desde la nube, vuelve a poblar TODOS los
+// desplegables que dependen de los deptos/unidades, para que los que se agregaron
+// en otro equipo aparezcan al instante, sin necesidad de recargar la página.
+function refrescarSelectsDeptos(){
+  try{ fillIngresoSelects(); }catch(e){}                 // i_uni, e_unidad, e_origen (pantalla Ingreso)
+  try{ poblarInicioDeptos(); }catch(e){}                 // desplegable de la pantalla de inicio (acceso)
+  try{ if(!document.getElementById('vistaParte').classList.contains('hidden')) initParte(); }catch(e){}
+  try{ if(!document.getElementById('vistaAnexo').classList.contains('hidden')) initAnexo(); }catch(e){}
+}
 // Une {id:registro}: agrega los que faltan y actualiza si la nube es más reciente. Nunca quita.
 function mergeRegs(getFn, setFn, cloud){
   const local = getFn(); let cambios = false;
@@ -1077,7 +1086,7 @@ function syncDesdeFirestore(){
   // Configuración compartida (grados, deptos, unidades, claves): SOLO UNIÓN
   db.collection('apor_config').doc('global').onSnapshot(function(doc){
     if(!doc.exists) return;
-    if(mergeConfig(doc.data() || {})) refrescarVistaActual();
+    if(mergeConfig(doc.data() || {})){ refrescarSelectsDeptos(); refrescarVistaActual(); }
   }, function(err){ console.warn('Sync config falló:', err && err.code); });
 }
 // Guarda en la nube CON CONFIRMACIÓN visible: el usuario sabe si quedó respaldado o solo local.
