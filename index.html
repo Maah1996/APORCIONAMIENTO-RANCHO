@@ -1064,6 +1064,7 @@ function mergeConfig(c){
   });
   if(c.claves) Object.keys(c.claves).forEach(d=>{ if(!(d in CLAVES)){ CLAVES[d] = c.claves[d]; cambios=true; } });
   if(cambios){
+    DEPTOS = ordenarDeptos(DEPTOS);
     localStorage.setItem('apor_deptos',   JSON.stringify(DEPTOS));
     localStorage.setItem('apor_unidades', JSON.stringify(UNIDADES));
     localStorage.setItem('apor_grados',   JSON.stringify(GRADOS));
@@ -1188,12 +1189,22 @@ function deptosPorDefecto(){
   return ["DEPTO I","DEPTO II","DEPTO III","DEPTO IV","DEPTO V","DEPTO VI","DEPTO VIII",
           "DPI","DICE","COMPRED","FAP","BANDA","FISC.MIL."];
 }
-let DEPTOS = cargarDeptos();
+// Ordena la lista de deptos: los que empiezan con "DEPTO" MANTIENEN su orden actual
+// (DEPTO I, II, III…), y TODO el resto queda en orden alfabético (AYTIA…, BANDA, ZB PUQ…).
+function ordenarDeptos(arr){
+  const a = Array.isArray(arr) ? arr.slice() : [];
+  const esDepto = d => /^\s*DEPTO\b/i.test(d||'');
+  const fijos = a.filter(esDepto);                       // conservan el orden en que están
+  const otros = a.filter(d=> !esDepto(d))
+                 .sort((x,y)=> (''+x).localeCompare((''+y), 'es', {sensitivity:'base', numeric:true}));
+  return fijos.concat(otros);
+}
+let DEPTOS = ordenarDeptos(cargarDeptos());
 function cargarDeptos(){
   try{ const s = localStorage.getItem('apor_deptos'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) return a; } }catch(e){}
   return deptosPorDefecto();
 }
-function guardarDeptosLS(){ localStorage.setItem('apor_deptos', JSON.stringify(DEPTOS)); guardarConfigFS(); }
+function guardarDeptosLS(){ DEPTOS = ordenarDeptos(DEPTOS); localStorage.setItem('apor_deptos', JSON.stringify(DEPTOS)); guardarConfigFS(); }
 
 /* ============================================================
    UNIDADES EXTERNAS (editables, persistidas en localStorage)
@@ -1421,7 +1432,7 @@ function initParte(){
   Object.values(getNominas()).forEach(r=>{ if(r.uniInterna && !map.has(keyNodo(r.uniInterna))) map.set(keyNodo(r.uniInterna), r.uniInterna); });
   Object.values(getExternos()).forEach(r=>{ if(r.unidadACargo && !map.has(keyNodo(r.unidadACargo))) map.set(keyNodo(r.unidadACargo), r.unidadACargo); });
   sel.innerHTML = '<option value="__ALL__">— Todos los departamentos —</option>' +
-                  [...map.values()].map(d=>`<option value="${escAttr(d)}">${escAttr(d)}</option>`).join('');
+                  ordenarDeptos([...map.values()]).map(d=>`<option value="${escAttr(d)}">${escAttr(d)}</option>`).join('');
   if(cur) sel.value = cur;
   const f = document.getElementById('p_fecha');
   if(!f.value) f.value = new Date().toISOString().slice(0,10);
@@ -1645,7 +1656,7 @@ function cListaDeptos(){
   DEPTOS.forEach(d=> map.set(keyNodo(d), d));
   Object.values(getNominas()).forEach(r=>{ if(r.uniInterna) map.set(keyNodo(r.uniInterna), r.uniInterna); });
   Object.values(getExternos()).forEach(r=>{ if(r.unidadACargo) map.set(keyNodo(r.unidadACargo), r.unidadACargo); });
-  return [...map.values()];
+  return ordenarDeptos([...map.values()]);
 }
 // Todo el personal (interno + externo vigente) de un depto en una fecha, con la firma que usa el Parte
 function personalDeDepto(depto, fecha){
