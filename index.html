@@ -1285,6 +1285,24 @@ function toast(msg, tipo='info'){
 /* ============================================================
    NAVEGACIÓN ENTRE VISTAS (Inicio / Ingreso / Parte / Anexo)
    ============================================================ */
+/* ===== Sesión: mantener el acceso y la vista al refrescar (sessionStorage) =====
+   sessionStorage sobrevive al refresco (F5/Ctrl+Shift+R) pero se limpia al cerrar
+   la pestaña/navegador, así no queda la sesión abierta indefinidamente. */
+let VISTA_ACTUAL = 'inicio';
+function guardarSesion(){
+  try{ sessionStorage.setItem('apor_sesion', JSON.stringify({ authDepto:AUTH_DEPTO, adminOk:ADMIN_OK, vista:VISTA_ACTUAL })); }catch(e){}
+}
+function limpiarSesion(){ try{ sessionStorage.removeItem('apor_sesion'); }catch(e){} }
+function restaurarSesion(){
+  let s; try{ s = JSON.parse(sessionStorage.getItem('apor_sesion')||'null'); }catch(e){ s=null; }
+  if(!s) return false;
+  ADMIN_OK   = !!s.adminOk;
+  AUTH_DEPTO = (s.authDepto && DEPTOS.includes(s.authDepto)) ? s.authDepto : '';
+  if(!ADMIN_OK && !AUTH_DEPTO) return false;         // no había sesión válida que restaurar
+  const nav = { inicio:()=>showVista('inicio'), ingreso:irIngreso, parte:irParte, anexo:irAnexo, control:irControl };
+  (nav[s.vista] || nav.inicio)();                    // usa la función de navegación real (hace el setup completo)
+  return true;
+}
 function showVista(v){
   document.getElementById('vistaInicio').classList.toggle('hidden', v!=='inicio');
   document.getElementById('vistaIngreso').classList.toggle('hidden', v!=='ingreso');
@@ -1297,6 +1315,8 @@ function showVista(v){
   if(v==='anexo') initAnexo();
   if(v==='control') initControl();
   window.scrollTo(0,0);
+  VISTA_ACTUAL = v;
+  guardarSesion();
 }
 function poblarInicioDeptos(){
   const sel = document.getElementById('inicioDepto');
@@ -1407,6 +1427,7 @@ async function gateIngresar(){
     document.getElementById('gateDeptoActivo').textContent = 'ADMINISTRADOR — acceso total';
     document.getElementById('gateOk').classList.remove('hidden');
     bloquearCards(false);
+    guardarSesion();
     toast('Acceso administrador: privilegios totales.', 'ok');
     return;
   }
@@ -1418,6 +1439,7 @@ async function gateIngresar(){
   document.getElementById('gateDeptoActivo').textContent = d;
   document.getElementById('gateOk').classList.remove('hidden');
   bloquearCards(false);
+  guardarSesion();
   toast('Acceso concedido: '+d, 'ok');
 }
 function gateSalir(){
@@ -1429,6 +1451,7 @@ function gateSalir(){
   document.getElementById('gateBtn').classList.add('hidden');
   document.getElementById('gateOk').classList.add('hidden');
   bloquearCards(true);
+  limpiarSesion();
 }
 function irIngreso(){
   if(!AUTH_DEPTO && !ADMIN_OK) return;
@@ -2253,6 +2276,7 @@ async function adminOk(){
   document.getElementById('gateBtn').classList.add('hidden');
   document.getElementById('gateOk').classList.remove('hidden');
   bloquearCards(false);
+  guardarSesion();
   toast('Acceso administrador: privilegios totales.', 'ok');
   gmOpenReal();
 }
@@ -2426,7 +2450,7 @@ function gmReset(){
   agregarFila('externo');
   ePeriodo();                       // muestra el calendario según el período por defecto (Día)
   recalc('interno'); recalc('externo');
-  showVista('inicio');
+  if(!restaurarSesion()) showVista('inicio');   // al refrescar, vuelve a la vista/acceso que había
 })();
 </script>
 </body>
