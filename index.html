@@ -952,6 +952,7 @@
     <div class="modal-foot">
       <button class="btn btn-nuevo" type="button" onclick="gmReset()">↺ Restaurar por defecto</button>
       <button class="btn btn-cargar" type="button" onclick="subirConfigNube()" title="Sube deptos, unidades, grados y claves a la nube para que los vean todos los equipos">⬆ Subir configuración a la nube</button>
+      <button class="btn btn-nuevo" type="button" onclick="protegerClaves()" title="Convierte a formato protegido (hash) las contraseñas que aún estén en texto plano, en este equipo y en la nube. Córralo una vez desde el PC.">🔒 Proteger contraseñas</button>
       <button class="btn btn-nuevo" type="button" onclick="migrarTodoNube()" title="Sube TODO (nóminas, externos, partes y configuración) a la nube. Úselo una vez al cambiar de proyecto Firebase.">⬆⬆ Migrar TODO a la nube</button>
       <div class="spacer"></div>
       <button class="btn btn-guardar" type="button" onclick="gmClose()">✔ Listo</button>
@@ -1328,6 +1329,35 @@ function cargarClaves(){
 function guardarClavesLS(){ localStorage.setItem('apor_claves', JSON.stringify(CLAVES)); guardarConfigFS(); }
 function claveDelDepto(d){ return CLAVES[d] || '1234'; } // 1234 por defecto si aún no se define
 
+/* ===== Protección de claves: se guardan como hash SHA-256, no en texto plano ===== */
+const SALT_APOR = 'apor-rancho::v1::';
+async function hashClave(txt){
+  const data = new TextEncoder().encode(SALT_APOR + String(txt));
+  const buf  = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function esHash(v){ return typeof v==='string' && /^[0-9a-f]{64}$/.test(v); }
+// Compara lo escrito contra lo guardado. Acepta el hash nuevo Y el texto plano heredado,
+// así ninguna clave existente deja de funcionar mientras se migra.
+async function claveCoincide(input, guardado, defaultPlain){
+  if(guardado===undefined || guardado===null || guardado===''){ return String(input) === String(defaultPlain); }
+  if(esHash(guardado)) return (await hashClave(input)) === guardado;
+  return String(input) === String(guardado);   // formato heredado en texto plano
+}
+// Migración one-click: convierte a hash cualquier clave que siga en texto plano
+// (admin + deptos), en este equipo y en la nube. Se puede correr las veces que sea.
+async function protegerClaves(){
+  let n = 0;
+  const a = localStorage.getItem('apor_admin');
+  if(a && !esHash(a)){ localStorage.setItem('apor_admin', await hashClave(a)); n++; }
+  for(const d of Object.keys(CLAVES)){
+    if(CLAVES[d] && !esHash(CLAVES[d])){ CLAVES[d] = await hashClave(CLAVES[d]); n++; }
+  }
+  localStorage.setItem('apor_claves', JSON.stringify(CLAVES));
+  guardarConfigFS();
+  toast(n ? ('🔒 '+n+' contraseña(s) protegidas y subidas a la nube.') : 'Todas las contraseñas ya estaban protegidas.', 'ok');
+}
+
 let AUTH_DEPTO = '';
 function bloquearCards(lock){
   document.getElementById('cardsInicio').classList.toggle('locked', lock);
@@ -1362,12 +1392,12 @@ function gateDeptoElegido(){
     box.classList.add('hidden'); btn.classList.add('hidden');
   }
 }
-function gateIngresar(){
+async function gateIngresar(){
   const d = document.getElementById('inicioDepto').value;
   if(!d){ toast('Seleccione su departamento.', 'warn'); return; }
   const val = document.getElementById('gateClaveInput').value;
   // Si escribe la clave de ADMINISTRADOR: acceso total, no volverá a pedir clave por depto
-  if(val === adminClave()){
+  if(await claveCoincide(val, localStorage.getItem('apor_admin'), '199673')){
     ADMIN_OK = true;
     AUTH_DEPTO = d;
     document.getElementById('gateClaveBox').classList.add('hidden');
@@ -1379,7 +1409,7 @@ function gateIngresar(){
     return;
   }
   // Clave normal del departamento (usuarios)
-  if(val !== claveDelDepto(d)){ toast('Clave incorrecta.', 'err'); return; }
+  if(!(await claveCoincide(val, CLAVES[d], '1234'))){ toast('Clave incorrecta.', 'err'); return; }
   AUTH_DEPTO = d;
   document.getElementById('gateClaveBox').classList.add('hidden');
   document.getElementById('gateBtn').classList.add('hidden');
@@ -2141,9 +2171,9 @@ function gmOpen(){
   setTimeout(()=> document.getElementById('adminInput').focus(), 50);
 }
 function adminClose(){ document.getElementById('adminModal').classList.add('hidden'); }
-function adminOk(){
+async function adminOk(){
   const val = document.getElementById('adminInput').value;
-  if(val !== adminClave()){ toast('Clave de administrador incorrecta.', 'err'); return; }
+  if(!(await claveCoincide(val, localStorage.getItem('apor_admin'), '199673'))){ toast('Clave de administrador incorrecta.', 'err'); return; }
   ADMIN_OK = true;
   adminClose();
   // acceso total: desbloquea los módulos de la portada
@@ -2183,16 +2213,16 @@ function gmSeccion(){
   } else if(v==='claves'){
     gmClaveInit();
   } else if(v==='admin'){
-    document.getElementById('gm_adminInput').value = adminClave();
+    document.getElementById('gm_adminInput').value = '';   // ya no se muestra la clave (va protegida)
     document.getElementById('gm_adminInput').focus();
   }
 }
-function gmAdminGuardar(){
+async function gmAdminGuardar(){
   const val = document.getElementById('gm_adminInput').value.trim();
   if(!val){ toast('Ingrese una clave de administrador.', 'warn'); return; }
-  localStorage.setItem('apor_admin', val);
+  localStorage.setItem('apor_admin', await hashClave(val));   // se guarda protegida (hash)
   guardarConfigFS();
-  toast('Clave de administrador actualizada.', 'ok');
+  toast('Clave de administrador actualizada (protegida).', 'ok');
 }
 // Al entrar a la sección Claves siempre arranca BLOQUEADA (re-pide clave admin)
 function gmClaveInit(){
@@ -2202,9 +2232,9 @@ function gmClaveInit(){
   setTimeout(()=> document.getElementById('claves_admin').focus(), 40);
 }
 // Verifica la clave de administrador y, si es correcta, muestra el editor de todas las claves
-function clavesDesbloquear(){
+async function clavesDesbloquear(){
   const val = document.getElementById('claves_admin').value;
-  if(val !== adminClave()){ toast('Clave de administrador incorrecta.', 'err'); return; }
+  if(!(await claveCoincide(val, localStorage.getItem('apor_admin'), '199673'))){ toast('Clave de administrador incorrecta.', 'err'); return; }
   document.getElementById('claves_gate').classList.add('hidden');
   document.getElementById('claves_editor').classList.remove('hidden');
   gmClavesGridRender();
@@ -2217,18 +2247,19 @@ function gmClavesGridRender(){
     <div class="clave-row">
       <label for="clave_i_${i}">${escAttr(d)}</label>
       <input type="text" id="clave_i_${i}" data-depto="${escAttr(d)}"
-             value="${escAttr(CLAVES[d]||'')}" placeholder="1234 (por defecto)">
+             value="" placeholder="${CLAVES[d] ? '•••• (definida — escriba para cambiar)' : '1234 (por defecto)'}">
     </div>`).join('');
 }
-// Guarda de una sola vez todas las claves ingresadas (en blanco = vuelve a 1234)
-function gmClavesGuardarTodas(){
-  document.querySelectorAll('#gm_clavesGrid input[data-depto]').forEach(inp=>{
+// Guarda de una sola vez todas las claves ingresadas (en blanco = se conserva la actual)
+async function gmClavesGuardarTodas(){
+  const inputs = [...document.querySelectorAll('#gm_clavesGrid input[data-depto]')];
+  for(const inp of inputs){
     const d = inp.getAttribute('data-depto');
     const val = inp.value.trim();
-    if(val) CLAVES[d] = val; else delete CLAVES[d];
-  });
+    if(val) CLAVES[d] = await hashClave(val);   // en blanco = no se toca la clave existente
+  }
   guardarClavesLS();   // persiste local + sincroniza a la nube
-  toast('Claves de acceso guardadas.', 'ok');
+  toast('Claves de acceso guardadas (protegidas).', 'ok');
 }
 function gmRenderDeptos(){
   const cont = document.getElementById('gm_deptos');
