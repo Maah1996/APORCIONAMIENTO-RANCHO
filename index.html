@@ -951,6 +951,7 @@
     <div class="modal-foot">
       <button class="btn btn-nuevo" type="button" onclick="gmReset()">↺ Restaurar por defecto</button>
       <button class="btn btn-cargar" type="button" onclick="subirConfigNube()" title="Sube deptos, unidades, grados y claves a la nube para que los vean todos los equipos">⬆ Subir configuración a la nube</button>
+      <button class="btn btn-nuevo" type="button" onclick="migrarTodoNube()" title="Sube TODO (nóminas, externos, partes y configuración) a la nube. Úselo una vez al cambiar de proyecto Firebase.">⬆⬆ Migrar TODO a la nube</button>
       <div class="spacer"></div>
       <button class="btn btn-guardar" type="button" onclick="gmClose()">✔ Listo</button>
     </div>
@@ -961,19 +962,20 @@
 /* ============================================================
    CONFIGURACIÓN FIREBASE
    ------------------------------------------------------------
-   Proyecto Firestore compartido con el Checklist de Procesos y
-   Riesgos (cheklist-procesos). Colecciones reservadas para este
-   sistema: apor_interno, apor_externo, apor_partes. Las reglas
-   exigen request.auth != null, por eso se abre sesión anónima
-   (ensureFbAuth) — no hay login real de Firebase en esta app.
+   Proyecto DEDICADO y AISLADO para el aporcionamiento
+   (aporcionamiento-rancho) — ya no se comparte con el Checklist,
+   para máxima seguridad. Colecciones: apor_interno, apor_externo,
+   apor_partes, apor_config. Las reglas exigen request.auth != null;
+   se abre sesión anónima (no hay login real). El candado fuerte
+   contra accesos externos es App Check (reCAPTCHA), Etapa 3.
    ============================================================ */
 const firebaseConfig = {
-  apiKey:            "AIzaSyBfnQsXjHHOHYq54WegvUEOvxsXtUwRroI",
-  authDomain:        "cheklist-procesos.firebaseapp.com",
-  projectId:         "cheklist-procesos",
-  storageBucket:     "cheklist-procesos.firebasestorage.app",
-  messagingSenderId: "334798830146",
-  appId:             "1:334798830146:web:f2fd731463ded64aa00bdb"
+  apiKey:            "AIzaSyCJgazDI6KtZPic8Dsyu6tIIvb1EsljbAY",
+  authDomain:        "aporcionamiento-rancho.firebaseapp.com",
+  projectId:         "aporcionamiento-rancho",
+  storageBucket:     "aporcionamiento-rancho.firebasestorage.app",
+  messagingSenderId: "200085757654",
+  appId:             "1:200085757654:web:6dc809bf6917f47c80f377"
 };
 
 let db = null, dbOk = false;
@@ -1104,6 +1106,29 @@ function guardarNube(coleccion, id, registro, etiqueta){
     });
 }
 function borrarNube(coleccion, id){ if(db) db.collection(coleccion).doc(id).delete().catch(()=>{}); }
+
+// MIGRACIÓN: sube TODO lo que hay en este equipo (nóminas, externos, partes y
+// configuración) a la nube. Úsela UNA vez desde el equipo que tiene los datos
+// completos (el PC) al cambiar de proyecto Firebase. No borra nada; solo sube.
+function migrarTodoNube(){
+  if(!db){ toast('Sin conexión a la nube. Abra el sitio publicado y espere «Conectado».', 'warn'); return; }
+  const noms = getNominas(), exts = getExternos(), partes = pGetPartes();
+  const ops = [];
+  Object.keys(noms).forEach(k=>   ops.push(db.collection('apor_interno').doc(k).set(noms[k])));
+  Object.keys(exts).forEach(k=>   ops.push(db.collection('apor_externo').doc(k).set(exts[k])));
+  Object.keys(partes).forEach(f=> ops.push(db.collection('apor_partes').doc(f).set(partes[f])));
+  ops.push(db.collection('apor_config').doc('global').set({
+    grados: GRADOS, deptos: DEPTOS, unidades: UNIDADES, claves: CLAVES,
+    admin: (localStorage.getItem('apor_admin') || '199673')
+  }));
+  toast('⬆ Migrando '+ops.length+' elementos a la nube nueva…', 'info');
+  Promise.allSettled(ops).then(function(rs){
+    const ok = rs.filter(r=> r.status==='fulfilled').length;
+    const fail = rs.length - ok;
+    if(fail===0) toast('✅ Migración completa: '+ok+' elementos subidos. Verifique en el celular.', 'ok');
+    else toast('⚠ Subieron '+ok+', fallaron '+fail+'. Revise conexión/reglas y reintente.', 'err');
+  });
+}
 
 // Sube TODA la configuración local (deptos, unidades, grados, claves) a la nube,
 // con confirmación visible. Úsela una vez desde el equipo que tiene la lista completa
