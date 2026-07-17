@@ -339,6 +339,18 @@
 
   /* ===== Grilla de claves por depto (Administrador) ===== */
   .claves-grid{display:flex;flex-direction:column;gap:.45rem;max-height:44vh;overflow-y:auto;padding-right:.2rem;}
+  /* Tabla Departamento | Clave | Validar */
+  .claves-tabla{width:100%;border-collapse:collapse;font-size:.9rem;}
+  .claves-tabla thead th{position:sticky;top:0;background:var(--verde-claro);color:#fff;
+    padding:.45rem .5rem;text-align:left;font-size:.8rem;letter-spacing:.3px;}
+  .claves-tabla thead th.chk{text-align:center;width:74px;}
+  .claves-tabla td{border-bottom:1px solid var(--gris-borde);padding:.4rem .5rem;vertical-align:middle;}
+  .claves-tabla td:first-child{font-weight:bold;color:var(--verde-oscuro);white-space:nowrap;}
+  .claves-tabla td.chk{text-align:center;}
+  .claves-tabla input[type=text]{width:100%;font-family:inherit;font-size:.92rem;padding:.4rem .5rem;
+    border:1px solid var(--gris-borde);border-radius:6px;box-sizing:border-box;}
+  .claves-tabla input[type=text]:focus{outline:2px solid var(--oliva);border-color:var(--oliva);}
+  .claves-tabla input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:var(--oliva);}
   .clave-row{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;align-items:center;}
   .clave-row label{font-size:.9rem;font-weight:bold;color:var(--verde-oscuro);}
   .clave-row input{font-family:inherit;font-size:.95rem;padding:.42rem .5rem;
@@ -936,8 +948,9 @@
         </div>
         <!-- Editor: todos los deptos con su casillero de clave al lado -->
         <div id="claves_editor" class="hidden">
-          <p class="modal-nota">Ingrese la clave de cada departamento y presione <b>Guardar claves</b>.
-            Si deja uno en blanco, ese depto usa la provisional <b>1234</b>.</p>
+          <p class="modal-nota">Ingrese la <b>clave</b> de cada departamento y marque <b>Validar</b> para
+            habilitar su acceso. Luego presione <b>Guardar claves</b>. Si deja la clave en blanco, se conserva
+            la actual (o la provisional <b>1234</b>). Un depto <b>sin Validar</b> no podrá entrar aunque tenga clave.</p>
           <div id="gm_clavesGrid" class="claves-grid"></div>
           <div class="gm-add" style="margin-top:.8rem;">
             <div class="spacer"></div>
@@ -1094,12 +1107,14 @@ function mergeConfig(c){
     (c.grados[cat]||[]).forEach(g=>{ if(!GRADOS[cat].includes(g)){ GRADOS[cat].push(g); cambios=true; } });
   });
   if(c.claves) Object.keys(c.claves).forEach(d=>{ if(!(d in CLAVES)){ CLAVES[d] = c.claves[d]; cambios=true; } });
+  if(c.activos) Object.keys(c.activos).forEach(d=>{ if(!(d in ACTIVOS)){ ACTIVOS[d] = c.activos[d]; cambios=true; } });
   if(cambios){
     DEPTOS = ordenarDeptos(DEPTOS);
     localStorage.setItem('apor_deptos',   JSON.stringify(DEPTOS));
     localStorage.setItem('apor_unidades', JSON.stringify(UNIDADES));
     localStorage.setItem('apor_grados',   JSON.stringify(GRADOS));
     localStorage.setItem('apor_claves',   JSON.stringify(CLAVES));
+    localStorage.setItem('apor_activos',  JSON.stringify(ACTIVOS));
     renderDatalists();
   }
   return cambios;
@@ -1147,7 +1162,7 @@ function migrarTodoNube(){
   Object.keys(exts).forEach(k=>   ops.push(db.collection('apor_externo').doc(k).set(exts[k])));
   Object.keys(partes).forEach(f=> ops.push(db.collection('apor_partes').doc(f).set(partes[f])));
   ops.push(db.collection('apor_config').doc('global').set({
-    grados: GRADOS, deptos: DEPTOS, unidades: UNIDADES, claves: CLAVES,
+    grados: GRADOS, deptos: DEPTOS, unidades: UNIDADES, claves: CLAVES, activos: ACTIVOS,
     admin: (localStorage.getItem('apor_admin') || '199673')
   }));
   toast('⬆ Migrando '+ops.length+' elementos a la nube nueva…', 'info');
@@ -1166,7 +1181,7 @@ function subirConfigNube(){
   if(!db){ toast('La nube solo funciona en el sitio publicado (github.io).', 'warn'); return; }
   toast('Subiendo configuración a la nube…', 'info');
   db.collection('apor_config').doc('global').set({
-    grados: GRADOS, deptos: DEPTOS, unidades: UNIDADES, claves: CLAVES,
+    grados: GRADOS, deptos: DEPTOS, unidades: UNIDADES, claves: CLAVES, activos: ACTIVOS,
     admin: (localStorage.getItem('apor_admin') || '199673')
   })
   .then(function(){ toast('✅ Configuración subida: '+DEPTOS.length+' deptos y '+UNIDADES.length+' unidades ya están en la nube.', 'ok'); })
@@ -1180,7 +1195,7 @@ function subirConfigNube(){
 function guardarConfigFS(){
   if(!db) return;
   db.collection('apor_config').doc('global').set({
-    grados: GRADOS, deptos: DEPTOS, unidades: UNIDADES, claves: CLAVES,
+    grados: GRADOS, deptos: DEPTOS, unidades: UNIDADES, claves: CLAVES, activos: ACTIVOS,
     admin: (localStorage.getItem('apor_admin') || '199673')
   }).catch(()=>{});
 }
@@ -1367,8 +1382,21 @@ function cargarClaves(){
   try{ const s = localStorage.getItem('apor_claves'); if(s){ const o=JSON.parse(s); if(o && typeof o==='object') return o; } }catch(e){}
   return {};
 }
-function guardarClavesLS(){ localStorage.setItem('apor_claves', JSON.stringify(CLAVES)); guardarConfigFS(); }
+function guardarClavesLS(){
+  localStorage.setItem('apor_claves', JSON.stringify(CLAVES));
+  localStorage.setItem('apor_activos', JSON.stringify(ACTIVOS));
+  guardarConfigFS();
+}
 function claveDelDepto(d){ return CLAVES[d] || '1234'; } // 1234 por defecto si aún no se define
+
+/* ===== "Validar": qué deptos tienen el acceso habilitado (checkbox del editor) =====
+   Por defecto TODOS habilitados (undefined => activo) para no dejar a nadie sin acceso. */
+let ACTIVOS = cargarActivos();
+function cargarActivos(){
+  try{ const s = localStorage.getItem('apor_activos'); if(s){ const o=JSON.parse(s); if(o && typeof o==='object') return o; } }catch(e){}
+  return {};
+}
+function deptoActivo(d){ return ACTIVOS[d] !== false; }   // solo bloquea si está explícitamente en false
 
 /* ===== Protección de claves: se guardan como hash SHA-256, no en texto plano ===== */
 const SALT_APOR = 'apor-rancho::v1::';
@@ -1452,6 +1480,7 @@ async function gateIngresar(){
   }
   // Clave normal del departamento (usuarios)
   if(!(await claveCoincide(val, CLAVES[d], '1234'))){ toast('Clave incorrecta.', 'err'); return; }
+  if(!deptoActivo(d)){ toast('Este departamento no tiene el acceso habilitado. El administrador debe activarlo (columna «Validar»).', 'warn'); return; }
   AUTH_DEPTO = d;
   document.getElementById('gateClaveBox').classList.add('hidden');
   document.getElementById('gateBtn').classList.add('hidden');
@@ -2357,14 +2386,22 @@ async function clavesDesbloquear(){
 function gmClavesGridRender(){
   const grid = document.getElementById('gm_clavesGrid');
   if(DEPTOS.length===0){ grid.innerHTML = '<span class="gm-vacio">No hay departamentos. Agréguelos en la sección «Deptos».</span>'; return; }
-  grid.innerHTML = DEPTOS.map((d,i)=>`
-    <div class="clave-row">
-      <label for="clave_i_${i}">${escAttr(d)}</label>
-      <input type="text" id="clave_i_${i}" data-depto="${escAttr(d)}"
-             value="" placeholder="${CLAVES[d] ? '•••• (definida — escriba para cambiar)' : '1234 (por defecto)'}">
-    </div>`).join('');
+  grid.innerHTML =
+    '<table class="claves-tabla"><thead><tr>'+
+      '<th>Departamento</th><th>Clave</th><th class="chk">Validar</th>'+
+    '</tr></thead><tbody>'+
+    DEPTOS.map((d,i)=>`
+      <tr>
+        <td>${escAttr(d)}</td>
+        <td><input type="text" id="clave_i_${i}" data-depto="${escAttr(d)}"
+               value="" placeholder="${CLAVES[d] ? '•••• (definida — escriba para cambiar)' : '1234 (por defecto)'}"></td>
+        <td class="chk"><input type="checkbox" data-depto-chk="${escAttr(d)}" ${deptoActivo(d)?'checked':''}
+               title="Marcado = este depto puede entrar con su clave"></td>
+      </tr>`).join('')+
+    '</tbody></table>';
 }
 // Guarda de una sola vez todas las claves ingresadas (en blanco = se conserva la actual)
+// y el estado "Validar" (habilitado/deshabilitado) de cada depto.
 async function gmClavesGuardarTodas(){
   const inputs = [...document.querySelectorAll('#gm_clavesGrid input[data-depto]')];
   for(const inp of inputs){
@@ -2372,6 +2409,9 @@ async function gmClavesGuardarTodas(){
     const val = inp.value.trim();
     if(val) CLAVES[d] = await hashClave(val);   // en blanco = no se toca la clave existente
   }
+  document.querySelectorAll('#gm_clavesGrid input[data-depto-chk]').forEach(chk=>{
+    ACTIVOS[chk.getAttribute('data-depto-chk')] = chk.checked;   // true = habilitado, false = sin acceso
+  });
   guardarClavesLS();   // persiste local + sincroniza a la nube
   toast('Claves de acceso guardadas (protegidas).', 'ok');
 }
