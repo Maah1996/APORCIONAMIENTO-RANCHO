@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Control de Aporcionamiento Diario — V División de Ejército</title>
 
-<!-- Firebase (compat, misma línea que Sistema MAAH) -->
+<!-- Firebase (compat) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 
 <style>
   :root{
@@ -986,6 +987,12 @@ function marcarConexion(ok, texto){
 }
 try {
   firebase.initializeApp(firebaseConfig);
+  // App Check (reCAPTCHA v3): solo la app real publicada puede tocar la base de datos.
+  // Se activa antes de usar Firestore. Si el sitio de reCAPTCHA no reconoce el dominio,
+  // no rompe nada mientras App Check esté SIN forzar en la consola (modo monitoreo).
+  try {
+    firebase.appCheck().activate('6Le16lctAAAAAJobxZm1JbH9rOQiY_9-_fojNWJs', true);
+  } catch(e){ console.warn('App Check no se pudo activar:', e); }
   db = firebase.firestore();
   marcarConexion(false, "Conectando…");
   var _authReadyApor = false;
