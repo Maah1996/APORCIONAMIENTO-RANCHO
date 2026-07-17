@@ -327,6 +327,16 @@
     border:1px solid var(--gris-borde);border-radius:4px;background:#fbfcf9;}
   .modal-foot{display:flex;align-items:center;gap:.6rem;padding:.8rem 1rem;background:#f3f5ee;border-top:1px solid var(--gris-borde);}
 
+  /* ===== Ayuda desplegable de los botones (Administrador) ===== */
+  .gm-ayuda{margin:0 1rem;border:1px solid var(--gris-borde);border-radius:8px;background:#f7f8f3;padding:.4rem .7rem;}
+  .gm-ayuda summary{cursor:pointer;font-weight:bold;color:var(--verde-oscuro);font-size:.88rem;list-style:none;}
+  .gm-ayuda summary::-webkit-details-marker{display:none;}
+  .gm-ayuda summary::before{content:'▸ ';}
+  .gm-ayuda[open] summary::before{content:'▾ ';}
+  .gm-ayuda ul{margin:.55rem 0 .2rem;padding-left:1.15rem;font-size:.84rem;color:var(--gris);line-height:1.45;}
+  .gm-ayuda li{margin-bottom:.38rem;}
+  .gm-ayuda li b{color:var(--verde-oscuro);}
+
   /* ===== Grilla de claves por depto (Administrador) ===== */
   .claves-grid{display:flex;flex-direction:column;gap:.45rem;max-height:44vh;overflow-y:auto;padding-right:.2rem;}
   .clave-row{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;align-items:center;}
@@ -951,6 +961,15 @@
         </div>
       </div>
     </div>
+    <details class="gm-ayuda">
+      <summary>❔ ¿Qué hace cada botón?</summary>
+      <ul>
+        <li><b>↺ Restaurar por defecto:</b> devuelve grados, deptos y unidades a los valores de fábrica. Borra lo que hayas agregado o corregido en esas listas (no toca claves ni personal).</li>
+        <li><b>⬆ Subir configuración a la nube:</b> sube deptos, unidades, grados y claves para que todos los equipos (PC, casa, celular) vean lo mismo. No borra nada.</li>
+        <li><b>🔒 Proteger contraseñas:</b> convierte las claves a formato protegido (hash) en este equipo y en la nube. Córrelo una vez desde el PC.</li>
+        <li><b>⬆⬆ Migrar TODO a la nube:</b> sube todo (nóminas, externos, partes y configuración). Solo una vez, desde el PC que tiene los datos completos.</li>
+      </ul>
+    </details>
     <div class="modal-foot">
       <button class="btn btn-nuevo" type="button" onclick="gmReset()">↺ Restaurar por defecto</button>
       <button class="btn btn-cargar" type="button" onclick="subirConfigNube()" title="Sube deptos, unidades, grados y claves a la nube para que los vean todos los equipos">⬆ Subir configuración a la nube</button>
