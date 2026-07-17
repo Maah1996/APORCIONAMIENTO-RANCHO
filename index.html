@@ -746,7 +746,7 @@
             <input type="date" id="a_fecha" onchange="computeAnexo()">
           </div>
           <div class="campo">
-            <label for="a_depto">Departamento</label>
+            <label for="a_depto">Ver por</label>
             <select id="a_depto" onchange="computeAnexo()"></select>
           </div>
         </div>
@@ -770,8 +770,9 @@
 
         <div class="aviso-futuro">
           Cuenta solo al personal con <b>Rancho SÍ</b> marcado y guardado en el Parte de esa fecha.
-          <b>CG</b> = personal interno de los deptos (según el filtro elegido). Cada columna de unidad
-          (4 BRIACO, DESACO…) cuenta el personal externo que viene de esa unidad. <b>Total</b> = suma por categoría.
+          <b>Ver por «Todas las unidades»:</b> columna <b>CG</b> (todo el personal interno) + una columna por unidad
+          externa (4 BRIACO, DESACO…). <b>Ver por «Todos los deptos»:</b> una columna por cada depto (personal interno)
+          + columna <b>Externos</b> (todo el personal externo). También puede elegir un depto puntual. <b>Total</b> = suma por categoría.
         </div>
 
       </div>
@@ -1697,7 +1698,8 @@ function initAnexo(){
   if(!f.value) f.value = new Date().toISOString().slice(0,10);
   const sel = document.getElementById('a_depto');
   const cur = sel.value;
-  sel.innerHTML = '<option value="__ALL__">— Todos los deptos —</option>' +
+  sel.innerHTML = '<option value="__ALL__">— Todas las unidades —</option>' +
+                  '<option value="__DEPTOS__">— Todos los deptos —</option>' +
                   DEPTOS.map(d=>`<option value="${escAttr(d)}">${escAttr(d)}</option>`).join('');
   sel.value = (cur && [...sel.options].some(o=>o.value===cur)) ? cur : '__ALL__';
   computeAnexo();
@@ -1708,7 +1710,7 @@ function anexoDatos(){
   const depSel = document.getElementById('a_depto').value || '__ALL__';
   const marks = pGetPartes()[fecha] || {};
   const siSI = p => pRachoDe(marks[pSig(p)]) === 'SI';
-  const matchDepto = d => depSel==='__ALL__' || keyNodo(d)===keyNodo(depSel);
+  const matchDepto = d => depSel==='__ALL__' || depSel==='__DEPTOS__' || keyNodo(d)===keyNodo(depSel);
   const internos = [], externos = [];
   Object.values(getNominas()).forEach(reg=>{
     if(!matchDepto(reg.uniInterna)) return;
@@ -1728,6 +1730,10 @@ function anexoDatos(){
 }
 function computeAnexo(){
   const {internos, externos} = anexoDatos();
+  // Vista "Por deptos": una columna por depto + Externos + Total
+  if((document.getElementById('a_depto').value || '__ALL__') === '__DEPTOS__'){
+    computeAnexoPorDeptos(internos, externos); return;
+  }
   // Columnas de unidad = todas las configuradas + cualquiera presente en los datos
   const unidades = UNIDADES.slice();
   externos.forEach(p=>{ if(p.origen && !unidades.includes(p.origen)) unidades.push(p.origen); });
@@ -1756,6 +1762,36 @@ function computeAnexo(){
     `<tr><th>TOTAL</th><th class="num">${cell(totCG)}</th>`+
     totU.map(v=>`<th class="num">${cell(v)}</th>`).join('')+
     `<th class="num">${cell(totGen)}</th></tr>`;
+}
+
+// Vista "Por deptos": una columna por cada depto (personal INTERNO) + columna "Externos"
+// (todos los externos, contados por categoría) + Total.
+function computeAnexoPorDeptos(internos, externos){
+  const deptos = DEPTOS.slice();
+  internos.forEach(p=>{ if(p.depto && !deptos.some(d=>keyNodo(d)===keyNodo(p.depto))) deptos.push(p.depto); });
+  const cell = v => v>0 ? v : '-';
+
+  document.getElementById('anexo_thead').innerHTML =
+    `<tr><th>Categoría</th>`+
+    deptos.map(d=>`<th class="num">${escAttr(d)}</th>`).join('')+
+    `<th class="num">Externos</th><th class="num">Total</th></tr>`;
+
+  const totD = deptos.map(()=>0); let totExt=0, totGen=0;
+  const body = FILAS_RACION.map(fila=>{
+    const perD = deptos.map(d=> internos.filter(p=> keyNodo(p.depto)===keyNodo(d) && fila.match(p)).length);
+    const ext  = externos.filter(fila.match).length;
+    const total = perD.reduce((a,b)=>a+b,0) + ext;
+    perD.forEach((v,i)=> totD[i]+=v); totExt += ext; totGen += total;
+    return `<tr><td>${fila.label}</td>`+
+           perD.map(v=>`<td class="num">${cell(v)}</td>`).join('')+
+           `<td class="num">${cell(ext)}</td><td class="num">${cell(total)}</td></tr>`;
+  }).join('');
+  document.getElementById('anexo_tbody').innerHTML = body;
+
+  document.getElementById('anexo_tfoot').innerHTML =
+    `<tr><th>TOTAL</th>`+
+    totD.map(v=>`<th class="num">${cell(v)}</th>`).join('')+
+    `<th class="num">${cell(totExt)}</th><th class="num">${cell(totGen)}</th></tr>`;
 }
 
 /* ===== Exportar / Imprimir el Anexo (sin librerías externas) ===== */
