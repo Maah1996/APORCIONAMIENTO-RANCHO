@@ -1739,20 +1739,23 @@ function exportAnexoExcel(){
 function imprimirAnexo(){
   if(!AUTH_DEPTO && !ADMIN_OK){ toast('Ingrese primero.', 'warn'); return; }
   const {fecha, depto} = anexoMeta();
-  const tabla = document.querySelector('#vistaAnexo .anexo-tabla').outerHTML;
+  const tablaEl = document.querySelector('#vistaAnexo .anexo-tabla');
+  const nCols = tablaEl.querySelectorAll('thead th').length;      // incluye la col Categoría
+  const anchoTabla = 116 + Math.max(0, nCols-1) * 60;             // 1ª col 116px + resto 60px c/u
+  const tabla = tablaEl.outerHTML;
   const w = window.open('', '_blank');
   if(!w){ toast('Habilite las ventanas emergentes para imprimir el Anexo.', 'warn'); return; }
   w.document.write(
     '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Anexo '+escAttr(fecha)+'</title>'+
     '<style>'+
     "body{font-family:'Times New Roman',serif;color:#000;padding:26px;}"+
-    '.enc{text-align:center;font-weight:bold;line-height:1.35;}'+
-    '.sub{text-align:center;font-size:.92rem;margin:6px 0 16px;}'+
     '.info{font-size:.96rem;margin:6px 0 12px;}'+
     '.rot{font-weight:bold;margin:10px 0 4px;}'+
-    'table{border-collapse:collapse;width:100%;font-size:.9rem;}'+
-    'th,td{border:1px solid #333;padding:5px 8px;text-align:center;}'+
-    'th:first-child,td:first-child{text-align:left;}'+
+    'table{border-collapse:collapse;font-size:.72rem;table-layout:fixed;width:'+anchoTabla+'px;}'+
+    'th,td{border:1px solid #333;padding:4px 2px;text-align:center;vertical-align:middle;'+
+      'overflow-wrap:break-word;white-space:normal;}'+
+    'th:first-child,td:first-child{text-align:left;width:116px;}'+
+    'th:not(:first-child),td:not(:first-child){width:60px;}'+
     'tfoot th{background:#e9e9e9;}'+
     '@media print{body{padding:0;}}'+
     '</style></head><body>'+
