@@ -1814,8 +1814,11 @@ function computeAnexo(){
   if(anexoDepSel() === '__DEPTOS__'){
     computeAnexoPorDeptos(internos, externos); return;
   }
-  // Columnas de unidad = todas las configuradas + cualquiera presente en los datos
-  const unidades = UNIDADES.slice();
+  // Columnas de unidad: si se ve un depto puntual (caso del usuario de depto), solo se muestran
+  // las unidades externas que ESE depto tiene a cargo; en la vista global se listan todas.
+  const depSel = anexoDepSel();
+  const deptoEspecifico = depSel!=='__ALL__' && depSel!=='__DEPTOS__';
+  const unidades = deptoEspecifico ? [] : UNIDADES.slice();
   externos.forEach(p=>{ if(p.origen && !unidades.includes(p.origen)) unidades.push(p.origen); });
   const cell = v => v>0 ? v : '-';
 
