@@ -2011,6 +2011,11 @@ function imprimirAnexo(){
     'table{border-collapse:collapse;font-size:.64rem;table-layout:fixed;width:'+anchoTabla+'px;margin:0 auto;}'+
     'th,td{border:1px solid #333;padding:3px 1px;text-align:center;vertical-align:middle;'+
       'overflow-wrap:break-word;white-space:normal;line-height:1.15;}'+
+    // Encabezados de columna: nombre entero arriba (sin cortar a mitad de palabra),
+    // número/numeral en la línea de abajo y todos alineados al pie para que queden parejos.
+    'thead th{font-size:.55rem;line-height:1.1;vertical-align:bottom;'+
+      'word-break:keep-all;overflow-wrap:normal;padding-left:0;padding-right:0;}'+
+    'thead th:first-child{text-align:left;}'+
     'th:first-child,td:first-child{text-align:left;width:116px;}'+
     'th:not(:first-child),td:not(:first-child){width:'+ANCHO+'px;}'+
     'tfoot th{background:#e9e9e9;}'+
