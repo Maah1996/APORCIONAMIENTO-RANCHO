@@ -1897,9 +1897,13 @@ function computeAnexoPeriodo(){
   const cell = v => v>0 ? v : '-';
   const datosDia = dias.map(f => anexoDatosDe(f, depSel));   // {internos,externos} por día
 
+  // Encabezado de cada día: solo el número del día (el rango ya se eligió arriba).
+  // Si el rango cruza más de un mes (posible en semanal), se muestra dd-mm para no confundir.
+  const unMes = dias.every(f => f.slice(0,7) === dias[0].slice(0,7));
+  const encDia = f => unMes ? f.slice(8,10) : fmtFecha(f).slice(0,5);
   thead.innerHTML =
     `<tr><th>Categoría</th>`+
-    dias.map(f=>`<th class="num">${escAttr(fmtFecha(f).slice(0,5))}</th>`).join('')+  // dd-mm
+    dias.map(f=>`<th class="num">${escAttr(encDia(f))}</th>`).join('')+
     `<th class="num">Total</th></tr>`;
 
   const totCol = dias.map(()=>0); let totGen=0;
