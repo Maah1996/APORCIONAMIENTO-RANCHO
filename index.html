@@ -1486,6 +1486,7 @@ async function gateIngresar(){
     document.getElementById('gateBtn').classList.add('hidden');
     document.getElementById('gateDeptoActivo').textContent = 'ADMINISTRADOR — acceso total';
     document.getElementById('gateOk').classList.remove('hidden');
+    resetResumenSel();
     bloquearCards(false);
     guardarSesion();
     toast('Acceso administrador: privilegios totales.', 'ok');
@@ -1499,6 +1500,7 @@ async function gateIngresar(){
   document.getElementById('gateBtn').classList.add('hidden');
   document.getElementById('gateDeptoActivo').textContent = d;
   document.getElementById('gateOk').classList.remove('hidden');
+  resetResumenSel();
   bloquearCards(false);
   guardarSesion();
   toast('Acceso concedido: '+d, 'ok');
@@ -1511,6 +1513,7 @@ function gateSalir(){
   document.getElementById('gateClaveBox').classList.add('hidden');
   document.getElementById('gateBtn').classList.add('hidden');
   document.getElementById('gateOk').classList.add('hidden');
+  resetResumenSel();
   bloquearCards(true);
   limpiarSesion();
 }
@@ -1743,6 +1746,12 @@ function initAnexo(){
 function anexoDepSel(){
   if(!ADMIN_OK) return AUTH_DEPTO;
   return document.getElementById('a_depto').value || '__ALL__';
+}
+// Limpia la selección del Resumen al cambiar de sesión, para que no se herede entre roles
+// (evita que el admin quede viendo un solo depto tras haber entrado antes como usuario).
+function resetResumenSel(){
+  const s = document.getElementById('a_depto'); if(s) s.value = '';
+  const m = document.getElementById('a_modo');  if(m) m.value = 'dia';
 }
 
 /* ===== Período: Diario / Semanal / Mensual (rango personalizado) ===== */
