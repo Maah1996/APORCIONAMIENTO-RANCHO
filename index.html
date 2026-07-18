@@ -749,10 +749,26 @@
 
         <div class="cabecera">
           <div class="campo">
+            <label for="a_modo">Período</label>
+            <select id="a_modo" onchange="anexoModoChange()">
+              <option value="dia">Diario</option>
+              <option value="sem">Semanal</option>
+              <option value="mes">Mensual</option>
+            </select>
+          </div>
+          <div class="campo" id="a_diaBox">
             <label for="a_fecha">Racionamiento del Personal para el</label>
             <input type="date" id="a_fecha" onchange="computeAnexo()">
           </div>
-          <div class="campo">
+          <div class="campo hidden" id="a_desdeBox">
+            <label for="a_desde">Desde</label>
+            <input type="date" id="a_desde" onchange="computeAnexo()">
+          </div>
+          <div class="campo hidden" id="a_hastaBox">
+            <label for="a_hasta">Hasta</label>
+            <input type="date" id="a_hasta" onchange="computeAnexo()">
+          </div>
+          <div class="campo" id="a_deptoBox">
             <label for="a_depto">Ver por</label>
             <select id="a_depto" onchange="computeAnexo()"></select>
           </div>
@@ -776,6 +792,8 @@
         </div>
 
         <div class="aviso-futuro">
+          <b>Período:</b> <b>Diario</b> muestra el desglose por unidad/depto de una fecha; <b>Semanal</b> y <b>Mensual</b>
+          muestran una columna por día del rango (Desde–Hasta, editable) y la columna <b>Total</b> con las raciones del período.
           Cuenta solo al personal con <b>Rancho SÍ</b> marcado y guardado en el Parte de esa fecha.
           <b>Ver por «Todas las unidades»:</b> columna <b>CG</b> (todo el personal interno) + una columna por unidad
           externa (4 BRIACO, DESACO…). <b>Ver por «Todos los deptos»:</b> una columna por cada depto (personal interno)
@@ -1703,18 +1721,71 @@ function irAnexo(){
 function initAnexo(){
   const f = document.getElementById('a_fecha');
   if(!f.value) f.value = new Date().toISOString().slice(0,10);
+  // "Ver por": el ADMIN ve todos los deptos/unidades; el usuario de depto queda fijo en el suyo
   const sel = document.getElementById('a_depto');
   const cur = sel.value;
-  sel.innerHTML = '<option value="__ALL__">— Todas las unidades —</option>' +
-                  '<option value="__DEPTOS__">— Todos los deptos —</option>' +
-                  DEPTOS.map(d=>`<option value="${escAttr(d)}">${escAttr(d)}</option>`).join('');
-  sel.value = (cur && [...sel.options].some(o=>o.value===cur)) ? cur : '__ALL__';
+  if(ADMIN_OK){
+    sel.disabled = false;
+    sel.innerHTML = '<option value="__ALL__">— Todas las unidades —</option>' +
+                    '<option value="__DEPTOS__">— Todos los deptos —</option>' +
+                    DEPTOS.map(d=>`<option value="${escAttr(d)}">${escAttr(d)}</option>`).join('');
+    sel.value = (cur && [...sel.options].some(o=>o.value===cur)) ? cur : '__ALL__';
+  } else {
+    // El usuario de un depto SOLO ve el resumen de su propio depto (no el de los demás)
+    sel.disabled = true;
+    sel.innerHTML = `<option value="${escAttr(AUTH_DEPTO)}">${escAttr(AUTH_DEPTO)}</option>`;
+    sel.value = AUTH_DEPTO;
+  }
+  anexoModoChange();
+}
+
+// Depto efectivo del resumen: el usuario de depto queda siempre restringido al suyo
+function anexoDepSel(){
+  if(!ADMIN_OK) return AUTH_DEPTO;
+  return document.getElementById('a_depto').value || '__ALL__';
+}
+
+/* ===== Período: Diario / Semanal / Mensual (rango personalizado) ===== */
+function anexoModoChange(){
+  const modo = document.getElementById('a_modo').value;
+  document.getElementById('a_diaBox').classList.toggle('hidden', modo!=='dia');
+  document.getElementById('a_desdeBox').classList.toggle('hidden', modo==='dia');
+  document.getElementById('a_hastaBox').classList.toggle('hidden', modo==='dia');
+  if(modo!=='dia'){
+    // Rango por defecto según el período; el usuario puede cambiarlo libremente
+    const base = document.getElementById('a_fecha').value || ymdLocal(new Date());
+    const [d,h] = (modo==='sem') ? semanaDe(base) : mesDe(base);
+    document.getElementById('a_desde').value = d;
+    document.getElementById('a_hasta').value = h;
+  }
   computeAnexo();
+}
+function ymdLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseYmd(s){ const p=(s||'').split('-'); return new Date(+p[0], (+p[1]||1)-1, (+p[2]||1)); }
+function semanaDe(base){                                   // lunes..domingo que contiene la fecha
+  const d=parseYmd(base); const dow=(d.getDay()+6)%7;      // 0 = lunes
+  const lun=new Date(d); lun.setDate(d.getDate()-dow);
+  const dom=new Date(lun); dom.setDate(lun.getDate()+6);
+  return [ymdLocal(lun), ymdLocal(dom)];
+}
+function mesDe(base){                                       // día 1 .. último día del mes
+  const d=parseYmd(base);
+  return [ymdLocal(new Date(d.getFullYear(),d.getMonth(),1)), ymdLocal(new Date(d.getFullYear(),d.getMonth()+1,0))];
+}
+function fechasEnRango(desde,hasta){
+  const out=[]; if(!desde||!hasta) return out;
+  let d=parseYmd(desde); const end=parseYmd(hasta);
+  if(end<d) return out;
+  let guard=0;
+  while(d<=end && guard++<400){ out.push(ymdLocal(d)); d.setDate(d.getDate()+1); }
+  return out;
 }
 // Reúne internos (CG) y externos (por unidad de origen) con Rancho SÍ, según fecha y depto elegido
 function anexoDatos(){
-  const fecha = document.getElementById('a_fecha').value;
-  const depSel = document.getElementById('a_depto').value || '__ALL__';
+  return anexoDatosDe(document.getElementById('a_fecha').value, anexoDepSel());
+}
+function anexoDatosDe(fecha, depSel){
+  depSel = depSel || '__ALL__';
   const marks = pGetPartes()[fecha] || {};
   const siSI = p => pRachoDe(marks[pSig(p)]) === 'SI';
   const matchDepto = d => depSel==='__ALL__' || depSel==='__DEPTOS__' || keyNodo(d)===keyNodo(depSel);
@@ -1736,9 +1807,11 @@ function anexoDatos(){
   return {internos, externos};
 }
 function computeAnexo(){
+  const modo = document.getElementById('a_modo') ? document.getElementById('a_modo').value : 'dia';
+  if(modo!=='dia'){ computeAnexoPeriodo(); return; }
   const {internos, externos} = anexoDatos();
   // Vista "Por deptos": una columna por depto + Externos + Total
-  if((document.getElementById('a_depto').value || '__ALL__') === '__DEPTOS__'){
+  if(anexoDepSel() === '__DEPTOS__'){
     computeAnexoPorDeptos(internos, externos); return;
   }
   // Columnas de unidad = todas las configuradas + cualquiera presente en los datos
@@ -1801,13 +1874,62 @@ function computeAnexoPorDeptos(internos, externos){
     `<th class="num">${cell(totExt)}</th><th class="num">${cell(totGen)}</th></tr>`;
 }
 
+// Vista Semanal/Mensual: una columna por cada día del rango, filas por categoría,
+// más la columna Total (suma de raciones del período). Cuenta el personal con Rancho SÍ
+// de cada fecha, según el depto seleccionado (para el usuario, siempre su propio depto).
+function computeAnexoPeriodo(){
+  const depSel = anexoDepSel();
+  const desde = document.getElementById('a_desde').value;
+  const hasta = document.getElementById('a_hasta').value;
+  const dias  = fechasEnRango(desde, hasta);
+  const thead = document.getElementById('anexo_thead');
+  const tbody = document.getElementById('anexo_tbody');
+  const tfoot = document.getElementById('anexo_tfoot');
+  if(!dias.length){
+    thead.innerHTML = '<tr><th>Categoría</th><th class="num">Total</th></tr>';
+    tbody.innerHTML = `<tr><td colspan="2">Seleccione un rango de fechas válido (Desde ≤ Hasta).</td></tr>`;
+    tfoot.innerHTML = '';
+    return;
+  }
+  const cell = v => v>0 ? v : '-';
+  const datosDia = dias.map(f => anexoDatosDe(f, depSel));   // {internos,externos} por día
+
+  thead.innerHTML =
+    `<tr><th>Categoría</th>`+
+    dias.map(f=>`<th class="num">${escAttr(fmtFecha(f).slice(0,5))}</th>`).join('')+  // dd-mm
+    `<th class="num">Total</th></tr>`;
+
+  const totCol = dias.map(()=>0); let totGen=0;
+  const body = FILAS_RACION.map(fila=>{
+    const perDia = datosDia.map(dd=> dd.internos.filter(fila.match).length + dd.externos.filter(fila.match).length);
+    const total  = perDia.reduce((a,b)=>a+b,0);
+    perDia.forEach((v,i)=> totCol[i]+=v); totGen += total;
+    return `<tr><td>${fila.label}</td>`+
+           perDia.map(v=>`<td class="num">${cell(v)}</td>`).join('')+
+           `<td class="num">${cell(total)}</td></tr>`;
+  }).join('');
+  tbody.innerHTML = body;
+
+  tfoot.innerHTML =
+    `<tr><th>TOTAL</th>`+
+    totCol.map(v=>`<th class="num">${cell(v)}</th>`).join('')+
+    `<th class="num">${cell(totGen)}</th></tr>`;
+}
+
 /* ===== Exportar / Imprimir el Anexo (sin librerías externas) ===== */
 function anexoMeta(){
-  const fecha = document.getElementById('a_fecha').value || '';
-  const v = document.getElementById('a_depto').value;
+  const modo = document.getElementById('a_modo') ? document.getElementById('a_modo').value : 'dia';
+  const v = anexoDepSel();
   const depto = v==='__DEPTOS__' ? 'TODOS LOS DEPTOS'
               : (v==='__ALL__' || !v) ? 'TODAS LAS UNIDADES'
               : v;
+  let fecha;
+  if(modo==='dia'){
+    fecha = document.getElementById('a_fecha').value || '';
+  } else {
+    const d = document.getElementById('a_desde').value, h = document.getElementById('a_hasta').value;
+    fecha = (modo==='sem'?'Semana ':'Mes ') + fmtFecha(d) + ' a ' + fmtFecha(h);
+  }
   return { fecha, depto };
 }
 // Lee la tabla ya renderizada (thead+tbody+tfoot) como matriz de textos
