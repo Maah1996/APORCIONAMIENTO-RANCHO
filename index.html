@@ -1937,13 +1937,18 @@ function computeAnexoPeriodo(){
   const cell = v => v>0 ? v : '-';
   const datosDia = dias.map(f => anexoDatosDe(f, depSel));   // {internos,externos} por día
 
-  // Encabezado de cada día: solo el número del día (el rango ya se eligió arriba).
-  // Si el rango cruza más de un mes (posible en semanal), se muestra dd-mm para no confundir.
+  // Encabezado de cada día: sigla del día arriba (LUN, MAR…) y el número abajo (ej. LUN / 23).
+  // Si el rango cruza más de un mes (posible en semanal), abajo va dd-mm para no confundir.
   const unMes = dias.every(f => f.slice(0,7) === dias[0].slice(0,7));
-  const encDia = f => unMes ? f.slice(8,10) : fmtFecha(f).slice(0,5);
+  const SIG = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];   // getDay(): 0=domingo
+  const encDiaHtml = f => {
+    const sig = SIG[parseYmd(f).getDay()];
+    const num = unMes ? f.slice(8,10) : fmtFecha(f).slice(0,5);
+    return escAttr(sig) + '<br>' + escAttr(num);
+  };
   thead.innerHTML =
     `<tr><th>Categoría</th>`+
-    dias.map(f=>`<th class="num">${escAttr(encDia(f))}</th>`).join('')+
+    dias.map(f=>`<th class="num">${encDiaHtml(f)}</th>`).join('')+
     `<th class="num">Total</th></tr>`;
 
   const totCol = dias.map(()=>0); let totGen=0;
@@ -2026,9 +2031,11 @@ function imprimirAnexo(){
   const ANCHO = 42;                                               // ancho de "DEPTO" + margen mínimo
   const anchoTabla = 116 + Math.max(0, nCols-1) * ANCHO;         // 1ª col 116px + resto ANCHO px
   const landscape = anchoTabla > 620;                             // solo apaisa si no cabe en vertical (ej. Todos los deptos)
-  // Clona la tabla y parte los títulos en 2 líneas (nombre arriba, resto abajo) para el papel
+  // Clona la tabla y parte los títulos en 2 líneas (nombre arriba, resto abajo) para el papel.
+  // En Semanal/Mensual los encabezados ya vienen en 2 líneas (LUN / 23): se dejan tal cual.
+  const esPeriodo = document.getElementById('a_modo') && document.getElementById('a_modo').value !== 'dia';
   const clon = tablaEl.cloneNode(true);
-  clon.querySelectorAll('thead th').forEach((th,i)=>{ if(i>0) th.innerHTML = encPrintHeader(th.textContent); });
+  if(!esPeriodo) clon.querySelectorAll('thead th').forEach((th,i)=>{ if(i>0) th.innerHTML = encPrintHeader(th.textContent); });
   const tabla = clon.outerHTML;
   const w = window.open('', '_blank');
   if(!w){ toast('Habilite las ventanas emergentes para imprimir el Anexo.', 'warn'); return; }
