@@ -1845,31 +1845,48 @@ function anexoDatosDe(fecha, depSel){
 }
 function computeAnexo(){
   const modo = document.getElementById('a_modo') ? document.getElementById('a_modo').value : 'dia';
-  if(modo!=='dia'){ computeAnexoPeriodo(); return; }
-  const {internos, externos} = anexoDatos();
-  // Vista "Por deptos": una columna por depto + Externos + Total
-  if(anexoDepSel() === '__DEPTOS__'){
-    computeAnexoPorDeptos(internos, externos); return;
+  const depSel = anexoDepSel();
+  if(modo==='dia'){
+    const {internos, externos} = anexoDatos();
+    if(depSel==='__DEPTOS__'){ computeAnexoPorDeptos(internos, externos); return; }
+    renderAnexoUnidades(internos, externos); return;
   }
-  // Columnas de unidad: si se ve un depto puntual (caso del usuario de depto), solo se muestran
-  // las unidades externas que ESE depto tiene a cargo; en la vista global se listan todas.
+  // Semanal / Mensual:
+  //  - USUARIO de depto (y admin en "ver como usuario"): día por día (no se toca).
+  //  - ADMINISTRADOR: mismas columnas que el diario (unidades o deptos), pero SUMANDO todo el rango.
+  if(!esAdminUI()){ computeAnexoPeriodo(); return; }
+  const {internos, externos} = anexoDatosRango(depSel);
+  if(depSel==='__DEPTOS__'){ computeAnexoPorDeptos(internos, externos); return; }
+  renderAnexoUnidades(internos, externos);
+}
+
+// Junta el personal con Rancho SÍ de todos los días del rango (cada día suma sus raciones).
+function anexoDatosRango(depSel){
+  const dias = fechasEnRango(document.getElementById('a_desde').value, document.getElementById('a_hasta').value);
+  const internos=[], externos=[];
+  dias.forEach(f=>{ const dd=anexoDatosDe(f, depSel); internos.push(...dd.internos); externos.push(...dd.externos); });
+  return {internos, externos};
+}
+
+// Render "por unidad": Categoría | CG (o nombre del depto para el usuario) | (una por unidad) | Total.
+// Sirve tanto para el diario (un día) como para el resumen del admin (rango sumado).
+function renderAnexoUnidades(internos, externos){
   const depSel = anexoDepSel();
   const deptoEspecifico = depSel!=='__ALL__' && depSel!=='__DEPTOS__';
+  // Si se ve un depto puntual, solo las unidades externas que ESE depto tiene a cargo; si no, todas.
   const unidades = deptoEspecifico ? [] : UNIDADES.slice();
   externos.forEach(p=>{ if(p.origen && !unidades.includes(p.origen)) unidades.push(p.origen); });
   const cell = v => v>0 ? v : '-';
 
-  // Título de la columna de personal interno: para el usuario de un depto se muestra el
-  // nombre real de su depto en MAYÚSCULAS (ej. AYTIA JEM); el administrador mantiene "CG".
+  // Para el usuario de un depto, la columna interna muestra el nombre del depto en MAYÚSCULAS;
+  // el administrador mantiene "CG".
   const cgLabel = (!esAdminUI() && deptoEspecifico) ? escAttr(String(depSel).toUpperCase()) : 'CG';
 
-  // Encabezado: Categoría | (depto o CG) | (una por unidad) | Total
   document.getElementById('anexo_thead').innerHTML =
     `<tr><th>Categoría</th><th class="num">${cgLabel}</th>`+
     unidades.map(u=>`<th class="num">${escAttr(u)}</th>`).join('')+
     `<th class="num">Total</th></tr>`;
 
-  // Totales por columna
   let totCG=0, totGen=0; const totU = unidades.map(()=>0);
   const body = FILAS_RACION.map(fila=>{
     const cg = internos.filter(fila.match).length;
@@ -2045,10 +2062,12 @@ function imprimirAnexo(){
   const headFont  = muchas ? '.5rem'  : '.55rem';
   const bodyFont  = muchas ? '.58rem' : '.64rem';
   // Clona la tabla y parte los títulos en 2 líneas (nombre arriba, resto abajo) para el papel.
-  // En Semanal/Mensual los encabezados ya vienen en 2 líneas (LUN / 23): se dejan tal cual.
-  const esPeriodo = document.getElementById('a_modo') && document.getElementById('a_modo').value !== 'dia';
+  // Excepción: la vista día-por-día del USUARIO ya trae encabezados en 2 líneas (LUN / 23) → no se tocan.
+  // El resumen del ADMIN (columnas por unidad/depto) sí usa encPrintHeader aunque sea semanal/mensual.
+  const modoAct = document.getElementById('a_modo') ? document.getElementById('a_modo').value : 'dia';
+  const esVistaDias = modoAct !== 'dia' && !esAdminUI();
   const clon = tablaEl.cloneNode(true);
-  if(!esPeriodo) clon.querySelectorAll('thead th').forEach((th,i)=>{ if(i>0) th.innerHTML = encPrintHeader(th.textContent); });
+  if(!esVistaDias) clon.querySelectorAll('thead th').forEach((th,i)=>{ if(i>0) th.innerHTML = encPrintHeader(th.textContent); });
   const tabla = clon.outerHTML;
   const w = window.open('', '_blank');
   if(!w){ toast('Habilite las ventanas emergentes para imprimir el Anexo.', 'warn'); return; }
