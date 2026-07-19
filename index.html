@@ -1858,9 +1858,13 @@ function computeAnexo(){
   externos.forEach(p=>{ if(p.origen && !unidades.includes(p.origen)) unidades.push(p.origen); });
   const cell = v => v>0 ? v : '-';
 
-  // Encabezado: Categoría | CG | (una por unidad) | Total
+  // Título de la columna de personal interno: para el usuario de un depto se muestra el
+  // nombre real de su depto en MAYÚSCULAS (ej. AYTIA JEM); el administrador mantiene "CG".
+  const cgLabel = (!esAdminUI() && deptoEspecifico) ? escAttr(String(depSel).toUpperCase()) : 'CG';
+
+  // Encabezado: Categoría | (depto o CG) | (una por unidad) | Total
   document.getElementById('anexo_thead').innerHTML =
-    `<tr><th>Categoría</th><th class="num">CG</th>`+
+    `<tr><th>Categoría</th><th class="num">${cgLabel}</th>`+
     unidades.map(u=>`<th class="num">${escAttr(u)}</th>`).join('')+
     `<th class="num">Total</th></tr>`;
 
