@@ -1821,20 +1821,27 @@ function fechasEnRango(desde,hasta){
 function anexoDatos(){
   return anexoDatosDe(document.getElementById('a_fecha').value, anexoDepSel());
 }
-function anexoDatosDe(fecha, depSel){
+// Lee UNA sola vez el localStorage (partes/nóminas/externos). Se pasa como 'cache' a anexoDatosDe
+// cuando se recorren muchos días (semanal/mensual), para no re-parsear en cada día (evita que se
+// congele la pantalla con muchos datos: antes eran 3 JSON.parse × cada día).
+function anexoCache(){
+  return { partes: pGetPartes(), nominas: getNominas(), externos: getExternos() };
+}
+function anexoDatosDe(fecha, depSel, cache){
   depSel = depSel || '__ALL__';
-  const marks = pGetPartes()[fecha] || {};
+  cache = cache || anexoCache();
+  const marks = cache.partes[fecha] || {};
   const siSI = p => pRachoDe(marks[pSig(p)]) === 'SI';
   const matchDepto = d => depSel==='__ALL__' || depSel==='__DEPTOS__' || keyNodo(d)===keyNodo(depSel);
   const internos = [], externos = [];
-  Object.values(getNominas()).forEach(reg=>{
+  Object.values(cache.nominas).forEach(reg=>{
     if(!matchDepto(reg.uniInterna)) return;
     (reg.personal||[]).forEach(p=>{
       const per = {categoria:p.categoria, grado:p.grado, nombre:p.nombre, depto:reg.uniInterna, tipo:'int'};
       if(siSI(per)) internos.push(per);
     });
   });
-  Object.values(getExternos()).forEach(reg=>{
+  Object.values(cache.externos).forEach(reg=>{
     if(!matchDepto(reg.unidadACargo) || !comisionActiva(reg, fecha)) return;
     (reg.personal||[]).forEach(p=>{
       const per = {categoria:p.categoria, grado:p.grado, nombre:p.nombre, depto:reg.unidadACargo, tipo:'ext'};
@@ -1863,8 +1870,9 @@ function computeAnexo(){
 // Junta el personal con Rancho SÍ de todos los días del rango (cada día suma sus raciones).
 function anexoDatosRango(depSel){
   const dias = fechasEnRango(document.getElementById('a_desde').value, document.getElementById('a_hasta').value);
+  const cache = anexoCache();                               // parsea una sola vez
   const internos=[], externos=[];
-  dias.forEach(f=>{ const dd=anexoDatosDe(f, depSel); internos.push(...dd.internos); externos.push(...dd.externos); });
+  dias.forEach(f=>{ const dd=anexoDatosDe(f, depSel, cache); internos.push(...dd.internos); externos.push(...dd.externos); });
   return {internos, externos};
 }
 
@@ -1887,10 +1895,17 @@ function renderAnexoUnidades(internos, externos){
     unidades.map(u=>`<th class="num">${escAttr(u)}</th>`).join('')+
     `<th class="num">Total</th></tr>`;
 
+  // Conteo en UNA sola pasada (clasifica cada persona una vez), evita filtrar N×categorías×unidades.
+  const uIdx = {}; unidades.forEach((u,i)=> uIdx[u]=i);
+  const cgCount = FILAS_RACION.map(()=>0);
+  const uCount  = FILAS_RACION.map(()=> unidades.map(()=>0));
+  internos.forEach(p=>{ FILAS_RACION.forEach((f,fi)=>{ if(f.match(p)) cgCount[fi]++; }); });
+  externos.forEach(p=>{ const ui = uIdx[p.origen]; if(ui==null) return; FILAS_RACION.forEach((f,fi)=>{ if(f.match(p)) uCount[fi][ui]++; }); });
+
   let totCG=0, totGen=0; const totU = unidades.map(()=>0);
-  const body = FILAS_RACION.map(fila=>{
-    const cg = internos.filter(fila.match).length;
-    const perU = unidades.map(u=> externos.filter(p=> p.origen===u && fila.match(p)).length);
+  const body = FILAS_RACION.map((fila,fi)=>{
+    const cg = cgCount[fi];
+    const perU = uCount[fi];
     const total = cg + perU.reduce((a,b)=>a+b,0);
     totCG += cg; totGen += total; perU.forEach((v,i)=> totU[i]+=v);
     return `<tr><td>${fila.label}</td><td class="num">${cell(cg)}</td>`+
@@ -1909,7 +1924,8 @@ function renderAnexoUnidades(internos, externos){
 // (todos los externos, contados por categoría) + Total.
 function computeAnexoPorDeptos(internos, externos){
   const deptos = DEPTOS.slice();
-  internos.forEach(p=>{ if(p.depto && !deptos.some(d=>keyNodo(d)===keyNodo(p.depto))) deptos.push(p.depto); });
+  const seen = new Set(deptos.map(keyNodo));
+  internos.forEach(p=>{ if(p.depto){ const k=keyNodo(p.depto); if(!seen.has(k)){ seen.add(k); deptos.push(p.depto); } } });
   const cell = v => v>0 ? v : '-';
 
   document.getElementById('anexo_thead').innerHTML =
@@ -1917,10 +1933,18 @@ function computeAnexoPorDeptos(internos, externos){
     deptos.map(d=>`<th class="num">${escAttr(d)}</th>`).join('')+
     `<th class="num">Externos</th><th class="num">Total</th></tr>`;
 
+  // Conteo en UNA sola pasada: countD[fila][depto] y countExt[fila].
+  // Antes se filtraba internos por cada categoría×depto (miles×keyNodo) → se congelaba el mes.
+  const dIdx = {}; deptos.forEach((d,i)=> dIdx[keyNodo(d)] = i);
+  const countD   = FILAS_RACION.map(()=> deptos.map(()=>0));
+  const countExt = FILAS_RACION.map(()=>0);
+  internos.forEach(p=>{ const di = dIdx[keyNodo(p.depto)]; if(di==null) return; FILAS_RACION.forEach((f,fi)=>{ if(f.match(p)) countD[fi][di]++; }); });
+  externos.forEach(p=>{ FILAS_RACION.forEach((f,fi)=>{ if(f.match(p)) countExt[fi]++; }); });
+
   const totD = deptos.map(()=>0); let totExt=0, totGen=0;
-  const body = FILAS_RACION.map(fila=>{
-    const perD = deptos.map(d=> internos.filter(p=> keyNodo(p.depto)===keyNodo(d) && fila.match(p)).length);
-    const ext  = externos.filter(fila.match).length;
+  const body = FILAS_RACION.map((fila,fi)=>{
+    const perD = countD[fi];
+    const ext  = countExt[fi];
     const total = perD.reduce((a,b)=>a+b,0) + ext;
     perD.forEach((v,i)=> totD[i]+=v); totExt += ext; totGen += total;
     return `<tr><td>${fila.label}</td>`+
@@ -1953,7 +1977,8 @@ function computeAnexoPeriodo(){
     return;
   }
   const cell = v => v>0 ? v : '-';
-  const datosDia = dias.map(f => anexoDatosDe(f, depSel));   // {internos,externos} por día
+  const cache = anexoCache();                                // parsea una sola vez (no por día)
+  const datosDia = dias.map(f => anexoDatosDe(f, depSel, cache));   // {internos,externos} por día
 
   // Encabezado de cada día: sigla del día arriba (LUN, MAR…) y el número abajo (ej. LUN / 23).
   // Si el rango cruza más de un mes (posible en semanal), abajo va dd-mm para no confundir.
