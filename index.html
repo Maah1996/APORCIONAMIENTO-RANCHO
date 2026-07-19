@@ -2033,7 +2033,17 @@ function imprimirAnexo(){
   const nCols = tablaEl.querySelectorAll('thead th').length;      // incluye la col Categoría
   const ANCHO = 42;                                               // ancho de "DEPTO" + margen mínimo
   const anchoTabla = 116 + Math.max(0, nCols-1) * ANCHO;         // 1ª col 116px + resto ANCHO px
-  const landscape = anchoTabla > 620;                             // solo apaisa si no cabe en vertical (ej. Todos los deptos)
+  // Muchas columnas (mensual, o "Todos los deptos"): la tabla se estira al 100% de la hoja
+  // horizontal con columnas angostas automáticas, así SIEMPRE cabe completa.
+  const muchas = nCols > 14;
+  const landscape = muchas || anchoTabla > 620;                  // apaisa si no cabe en vertical
+  const firstW    = muchas ? 92 : 116;                           // 1ª col (categoría) un poco menor si hay muchas
+  const tablaCss  = muchas ? 'width:100%;'                        // se ajusta al ancho de la página
+                          : ('width:'+anchoTabla+'px;');         // ancho fijo centrado (pocas columnas)
+  const colCss    = muchas ? ''                                   // sin ancho fijo: se reparten solas
+                          : ('th:not(:first-child),td:not(:first-child){width:'+ANCHO+'px;}');
+  const headFont  = muchas ? '.5rem'  : '.55rem';
+  const bodyFont  = muchas ? '.58rem' : '.64rem';
   // Clona la tabla y parte los títulos en 2 líneas (nombre arriba, resto abajo) para el papel.
   // En Semanal/Mensual los encabezados ya vienen en 2 líneas (LUN / 23): se dejan tal cual.
   const esPeriodo = document.getElementById('a_modo') && document.getElementById('a_modo').value !== 'dia';
@@ -2049,16 +2059,16 @@ function imprimirAnexo(){
     "body{font-family:'Times New Roman',serif;color:#000;padding:26px;text-align:center;}"+
     '.info{font-size:.96rem;margin:6px 0 12px;text-align:center;}'+
     '.rot{font-weight:bold;margin:10px 0 4px;text-align:center;}'+
-    'table{border-collapse:collapse;font-size:.64rem;table-layout:fixed;width:'+anchoTabla+'px;margin:0 auto;}'+
+    'table{border-collapse:collapse;font-size:'+bodyFont+';table-layout:fixed;'+tablaCss+'margin:0 auto;}'+
     'th,td{border:1px solid #333;padding:3px 1px;text-align:center;vertical-align:middle;'+
       'overflow-wrap:break-word;white-space:normal;line-height:1.15;}'+
     // Encabezados de columna: nombre entero arriba (sin cortar a mitad de palabra),
     // número/numeral en la línea de abajo y todos alineados al pie para que queden parejos.
-    'thead th{font-size:.55rem;line-height:1.1;vertical-align:bottom;'+
+    'thead th{font-size:'+headFont+';line-height:1.1;vertical-align:bottom;'+
       'word-break:keep-all;overflow-wrap:normal;padding-left:0;padding-right:0;}'+
     'thead th:first-child{text-align:left;}'+
-    'th:first-child,td:first-child{text-align:left;width:116px;}'+
-    'th:not(:first-child),td:not(:first-child){width:'+ANCHO+'px;}'+
+    'th:first-child,td:first-child{text-align:left;width:'+firstW+'px;}'+
+    colCss+
     'tfoot th{background:#e9e9e9;}'+
     '@media print{body{padding:0;}}'+
     '</style></head><body>'+
