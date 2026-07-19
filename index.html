@@ -133,7 +133,7 @@
   }
   table.personal input:hover, table.personal select:hover{border-color:var(--gris-borde);background:#fff;}
   table.personal input:focus, table.personal select:focus{outline:none;border-color:var(--oliva);background:#fff;}
-  td.col-cat{width:120px;} td.col-grado{width:110px;} td.col-depto{width:170px;} td.col-rut{width:150px;} td.col-racho{width:90px;} td.col-del{width:44px;}
+  td.col-cat{width:120px;} td.col-grado{width:110px;} td.col-depto{width:170px;} td.col-rut{width:150px;} td.col-racho{width:90px;} td.col-del{width:44px;} td.col-unidad{width:150px;}
   .rut-cell{position:relative;}
   .rut-cell input.rut-invalido{border-color:var(--rojo)!important;background:#fbeaea;}
   .rut-cell input.rut-valido{border-color:var(--verde-ok);background:#eef7ef;}
@@ -661,6 +661,7 @@
                 <th class="idx">N°</th>
                 <th>Grado</th>
                 <th>Nombre</th>
+                <th>Unidad</th>
                 <th></th>
               </tr>
             </thead>
@@ -2208,13 +2209,26 @@ function validaRut(rut){
 /* ============================================================
    FILAS DE PERSONAL
    ============================================================ */
+// Opciones de "Unidad" para cada fila de personal externo (mismas unidades del selector de arriba).
+// Si la unidad guardada ya no está en la lista, se agrega igual para no perderla.
+function unidadOptionsHTML(sel){
+  sel = sel || '';
+  const base = (UNIDADES||[]).slice();
+  if(sel && !base.some(u=>keyNodo(u)===keyNodo(sel))) base.push(sel);
+  return `<option value="">— Unidad —</option>` +
+         base.map(u=>`<option value="${escAttr(u)}"${keyNodo(u)===keyNodo(sel)?' selected':''}>${escAttr(u)}</option>`).join('');
+}
 function crearFila(pref, data){
   data = data || {grado:'', nombre:''};
   const tr = document.createElement('tr');
+  const esExt = (pref==='externo');
+  // La unidad de la fila arranca en la guardada o, si es nueva, en la "Unidad" elegida arriba.
+  const defUni = esExt ? (data.unidadOrigen || (document.getElementById('e_origen')||{}).value || '') : '';
   tr.innerHTML = `
     <td class="idx"></td>
     <td class="col-grado"><select class="f-grado">${gradoOptionsHTML(data.grado||'')}</select></td>
     <td><input class="f-nombre" value="${escAttr(data.nombre)}" placeholder="Apellidos y nombres"></td>
+    ${esExt ? `<td class="col-unidad"><select class="f-unidad">${unidadOptionsHTML(defUni)}</select></td>` : ''}
     <td class="col-del"><button class="btn-del" type="button" title="Eliminar fila">✕</button></td>
   `;
   tr.querySelector('.f-grado').addEventListener('change', ()=> recalc(pref));
@@ -2244,7 +2258,10 @@ function leerPersonal(pref){
   document.querySelectorAll('#'+pref[0]+'_tbody tr').forEach(tr=>{
     const grado  = tr.querySelector('.f-grado').value.trim();
     const nombre = tr.querySelector('.f-nombre').value.trim();
-    arr.push({ categoria: gradoACategoria(grado), grado, nombre });
+    const item = { categoria: gradoACategoria(grado), grado, nombre };
+    const uni = tr.querySelector('.f-unidad');            // solo existe en personal externo
+    if(uni) item.unidadOrigen = uni.value.trim();
+    arr.push(item);
   });
   return arr;
 }
