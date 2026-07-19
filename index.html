@@ -1051,7 +1051,7 @@ try {
       if(!_authReadyApor){
         _authReadyApor = true;
         marcarConexion(true, "Conectado");
-        syncDesdeFirestore();   // la nube pasa a ser la fuente de datos (multi-equipo)
+        iniciarSyncConAppCheck();   // espera el token de App Check y recién ahí lee la nube
       }
     } else {
       firebase.auth().signInAnonymously().catch(function(e){
@@ -1063,6 +1063,16 @@ try {
 } catch(e){
   marcarConexion(false, "Firebase no configurado");
   console.warn("Firebase no inicializado.", e);
+}
+// Arranca la sincronización con la nube SOLO cuando ya hay token de App Check (reCAPTCHA v3),
+// para que las primeras lecturas a Firestore lleven "pase" y no cuenten como "no válidas".
+// Tope de 3 s: si el token tarda o falla, arranca igual (nunca deja la app sin datos).
+function iniciarSyncConAppCheck(){
+  var arrancado = false;
+  var go = function(){ if(arrancado) return; arrancado = true; try{ syncDesdeFirestore(); }catch(e){ console.warn(e); } };
+  setTimeout(go, 3000);
+  try{ firebase.appCheck().getToken(false).then(go, go); }
+  catch(e){ go(); }
 }
 
 /* ============================================================
