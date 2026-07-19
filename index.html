@@ -1947,26 +1947,28 @@ function computeAnexoPeriodo(){
     const num = unMes ? f.slice(8,10) : fmtFecha(f).slice(0,5);
     return escAttr(sig) + '<br>' + escAttr(num);
   };
+  // Columnas: Categoría | (un día cada una) | Exter. (solo externos del período) | Total
   thead.innerHTML =
     `<tr><th>Categoría</th>`+
     dias.map(f=>`<th class="num">${encDiaHtml(f)}</th>`).join('')+
-    `<th class="num">Total</th></tr>`;
+    `<th class="num">Exter.</th><th class="num">Total</th></tr>`;
 
-  const totCol = dias.map(()=>0); let totGen=0;
+  const totCol = dias.map(()=>0); let totExt=0, totGen=0;
   const body = FILAS_RACION.map(fila=>{
     const perDia = datosDia.map(dd=> dd.internos.filter(fila.match).length + dd.externos.filter(fila.match).length);
+    const ext    = datosDia.reduce((a,dd)=> a + dd.externos.filter(fila.match).length, 0);  // solo externos del período
     const total  = perDia.reduce((a,b)=>a+b,0);
-    perDia.forEach((v,i)=> totCol[i]+=v); totGen += total;
+    perDia.forEach((v,i)=> totCol[i]+=v); totExt += ext; totGen += total;
     return `<tr><td>${fila.label}</td>`+
            perDia.map(v=>`<td class="num">${cell(v)}</td>`).join('')+
-           `<td class="num">${cell(total)}</td></tr>`;
+           `<td class="num">${cell(ext)}</td><td class="num">${cell(total)}</td></tr>`;
   }).join('');
   tbody.innerHTML = body;
 
   tfoot.innerHTML =
     `<tr><th>TOTAL</th>`+
     totCol.map(v=>`<th class="num">${cell(v)}</th>`).join('')+
-    `<th class="num">${cell(totGen)}</th></tr>`;
+    `<th class="num">${cell(totExt)}</th><th class="num">${cell(totGen)}</th></tr>`;
 }
 
 /* ===== Exportar / Imprimir el Anexo (sin librerías externas) ===== */
