@@ -286,9 +286,6 @@
   tr.fila-ext td{border-top:1px solid #e6d9a8;}
   .ext-tag{background:var(--amarillo);color:#4a3b00;font-size:.68rem;font-weight:bold;padding:1px 7px;border-radius:10px;margin-left:6px;letter-spacing:.5px;white-space:nowrap;}
   /* Anexo / Resumen */
-  .anexo-head{border:1px solid var(--gris-borde);border-radius:6px;padding:.6rem .8rem;margin-bottom:1rem;background:#f7f8f3;}
-  .anexo-inst{font-weight:bold;color:var(--verde-oscuro);font-size:.9rem;line-height:1.35;}
-  .anexo-sub{margin-top:.4rem;font-size:.85rem;color:var(--gris);letter-spacing:.3px;}
   table.anexo-tabla th.num, table.anexo-tabla td.num{text-align:center;width:110px;}
   table.anexo-tabla tbody td{padding:.45rem .5rem;border-bottom:1px solid var(--gris-borde);}
   table.anexo-tabla tbody td:first-child{font-weight:bold;color:var(--verde-oscuro);}
@@ -738,15 +735,6 @@
       <h2>Anexo Orden del Día — Fuerza Racionada</h2>
       <div class="panel-body">
 
-        <div class="anexo-head">
-          <div class="anexo-inst">
-            <div>EJÉRCITO DE CHILE</div>
-            <div>V DIVISIÓN</div>
-            <div>Cuartel General</div>
-          </div>
-          <div class="anexo-sub">ANEXO ORDEN DEL DÍA N.° ____ / CG V DE — PUNTA ARENAS</div>
-        </div>
-
         <div class="cabecera">
           <div class="campo">
             <label for="a_fecha">Racionamiento del Personal para el</label>
@@ -758,7 +746,7 @@
           </div>
         </div>
 
-        <div class="rot" style="margin:.4rem 0 .3rem;">a. Fuerza Racionada</div>
+        <div class="rot" style="margin:.4rem 0 .3rem;">A. RESUMEN PERSONAL APORCIONADO</div>
         <div class="tabla-wrap">
           <table class="personal anexo-tabla">
             <thead id="anexo_thead"></thead>
@@ -1854,12 +1842,15 @@ function imprimirAnexo(){
   const {fecha, depto} = anexoMeta();
   const tablaEl = document.querySelector('#vistaAnexo .anexo-tabla');
   const nCols = tablaEl.querySelectorAll('thead th').length;      // incluye la col Categoría
-  const ANCHO = 42;                                               // ancho de "DEPTO" + margen mínimo
+  const esDeptos = (document.getElementById('a_depto').value === '__DEPTOS__');
+  const ANCHO    = esDeptos ? 42 : 48;                            // deptos: más angosto (ancho de "DEPTO")
+  const fontTabla = esDeptos ? '.64rem' : '.66rem';
+  const padTabla  = esDeptos ? '3px 1px' : '4px 2px';
   const anchoTabla = 116 + Math.max(0, nCols-1) * ANCHO;         // 1ª col 116px + resto ANCHO px
   const landscape = anchoTabla > 620;                             // solo apaisa si no cabe en vertical (ej. Todos los deptos)
-  // Clona la tabla y parte los títulos en 2 líneas (nombre arriba, resto abajo) para el papel
+  // Solo en la vista "Todos los deptos" se parten los títulos en 2 líneas (nombre arriba, resto abajo).
   const clon = tablaEl.cloneNode(true);
-  clon.querySelectorAll('thead th').forEach((th,i)=>{ if(i>0) th.innerHTML = encPrintHeader(th.textContent); });
+  if(esDeptos) clon.querySelectorAll('thead th').forEach((th,i)=>{ if(i>0) th.innerHTML = encPrintHeader(th.textContent); });
   const tabla = clon.outerHTML;
   const w = window.open('', '_blank');
   if(!w){ toast('Habilite las ventanas emergentes para imprimir el Anexo.', 'warn'); return; }
