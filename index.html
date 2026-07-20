@@ -223,6 +223,17 @@
   .ext-lista{margin:0;padding-left:1.1rem;}
   .ext-lista li{font-size:.9rem;margin:.15rem 0;}
   .ext-hasta{color:var(--gris);font-size:.82rem;}
+  /* Barra de aviso de versión nueva (auto-actualización) */
+  .update-bar{
+    position:fixed;top:0;left:0;right:0;z-index:9999;
+    background:#8a5a00;color:#fff;text-align:center;padding:.55rem .8rem;
+    font-size:.92rem;font-weight:bold;box-shadow:0 2px 8px rgba(0,0,0,.28);
+  }
+  .update-bar.hidden{display:none;}
+  .update-bar button{
+    margin-left:.6rem;background:#fff;color:#8a5a00;border:none;border-radius:5px;
+    padding:.3rem .8rem;font-weight:bold;cursor:pointer;font-family:inherit;font-size:.9rem;
+  }
   footer{
     text-align:center;font-size:.75rem;color:#6a7060;padding:1rem;
   }
@@ -480,6 +491,12 @@
 <body>
 
 <div id="toast-wrap"></div>
+
+<!-- Aviso de versión nueva (auto-actualización, evita tener que hacer Ctrl+F5 a mano) -->
+<div id="updateBar" class="update-bar hidden">
+  🔄 Hay una versión nueva de la app disponible.
+  <button type="button" onclick="aplicarActualizacion()">Actualizar ahora</button>
+</div>
 
 <header class="inst">
   <div class="titulos">
@@ -1038,6 +1055,39 @@
    se abre sesión anónima (no hay login real). El candado fuerte
    contra accesos externos es App Check (reCAPTCHA), Etapa 3.
    ============================================================ */
+/* ============================================================
+   AUTO-ACTUALIZACIÓN — evita tener que hacer Ctrl+F5 a mano.
+   La app revisa cada pocos minutos el archivo version.txt (sin caché).
+   Si la versión publicada difiere de la que corre, muestra la barra
+   "Actualizar ahora", que recarga con ?v=... para saltarse la caché.
+   ⚠️ EN CADA DEPLOY: subir APP_VERSION aquí Y el contenido de version.txt
+   AL MISMO valor (si no, la barra no aparece o aparece siempre).
+   ============================================================ */
+const APP_VERSION = '2026-07-20-1';
+let _nuevaVersion = '';
+function comprobarVersion(){
+  try{
+    fetch('version.txt?t=' + Date.now(), { cache:'no-store' })
+      .then(function(r){ return r.ok ? r.text() : null; })
+      .then(function(txt){
+        if(!txt) return;
+        var v = txt.trim();
+        if(v && v !== APP_VERSION){
+          _nuevaVersion = v;
+          var bar = document.getElementById('updateBar');
+          if(bar) bar.classList.remove('hidden');
+        }
+      })
+      .catch(function(){});
+  }catch(e){}
+}
+function aplicarActualizacion(){
+  var v = _nuevaVersion || String(Date.now());
+  // Recarga cambiando la "llave" de caché (?v=...) para bajar SIEMPRE el index nuevo.
+  location.replace(location.pathname + '?v=' + encodeURIComponent(v));
+}
+try{ comprobarVersion(); setInterval(comprobarVersion, 3*60*1000); }catch(e){}
+
 const firebaseConfig = {
   apiKey:            "AIzaSyCJgazDI6KtZPic8Dsyu6tIIvb1EsljbAY",
   authDomain:        "aporcionamiento-rancho.firebaseapp.com",
