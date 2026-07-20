@@ -208,6 +208,21 @@
   .aviso-futuro{
     font-size:.78rem;color:var(--gris);font-style:italic;margin-top:.4rem;
   }
+  /* Detalle del personal externo en comisión (debajo del resumen) */
+  .ext-detalle{margin-top:1rem;}
+  .ext-detalle.hidden{display:none;}
+  .ext-detalle .ext-tit{
+    font-weight:bold;color:var(--verde-oscuro);text-transform:uppercase;
+    font-size:.82rem;letter-spacing:.5px;margin:0 0 .5rem;
+  }
+  .ext-uni{
+    border:1px solid var(--gris-borde);border-left:4px solid var(--oliva);
+    border-radius:6px;padding:.5rem .7rem;margin-bottom:.5rem;background:#f6f8f2;
+  }
+  .ext-uni-tit{font-weight:bold;color:var(--verde-militar);text-transform:uppercase;font-size:.82rem;margin-bottom:.25rem;}
+  .ext-lista{margin:0;padding-left:1.1rem;}
+  .ext-lista li{font-size:.9rem;margin:.15rem 0;}
+  .ext-hasta{color:var(--gris);font-size:.82rem;}
   footer{
     text-align:center;font-size:.75rem;color:#6a7060;padding:1rem;
   }
@@ -784,6 +799,9 @@
             <tfoot id="anexo_tfoot"></tfoot>
           </table>
         </div>
+
+        <!-- Detalle del personal externo en comisión (solo al ver un depto puntual) -->
+        <div id="anexoExtDetalle" class="ext-detalle hidden"></div>
 
         <div class="acciones">
           <button class="btn btn-guardar" type="button" onclick="imprimirAnexo()">🖨️ Imprimir / PDF</button>
@@ -1865,16 +1883,65 @@ function computeAnexo(){
   const depSel = anexoDepSel();
   if(modo==='dia'){
     const {internos, externos} = anexoDatos();
-    if(depSel==='__DEPTOS__'){ computeAnexoPorDeptos(internos, externos); return; }
-    renderAnexoUnidades(internos, externos); return;
+    if(depSel==='__DEPTOS__') computeAnexoPorDeptos(internos, externos);
+    else renderAnexoUnidades(internos, externos);
+  } else if(!esAdminUI()){
+    // USUARIO de depto (y admin en "ver como usuario"): día por día (no se toca).
+    computeAnexoPeriodo();
+  } else {
+    // ADMINISTRADOR: mismas columnas que el diario (unidades o deptos), pero SUMANDO todo el rango.
+    const {internos, externos} = anexoDatosRango(depSel);
+    if(depSel==='__DEPTOS__') computeAnexoPorDeptos(internos, externos);
+    else renderAnexoUnidades(internos, externos);
   }
-  // Semanal / Mensual:
-  //  - USUARIO de depto (y admin en "ver como usuario"): día por día (no se toca).
-  //  - ADMINISTRADOR: mismas columnas que el diario (unidades o deptos), pero SUMANDO todo el rango.
-  if(!esAdminUI()){ computeAnexoPeriodo(); return; }
-  const {internos, externos} = anexoDatosRango(depSel);
-  if(depSel==='__DEPTOS__'){ computeAnexoPorDeptos(internos, externos); return; }
-  renderAnexoUnidades(internos, externos);
+  renderExtDetalle(depSel, modo);   // cuadro con el detalle del personal externo (solo depto puntual)
+}
+
+// ¿La comisión de un registro externo cae dentro del rango [desde,hasta]? (fechas vacías = abierta)
+function comisionEnRango(reg, desde, hasta){
+  const d = desde || hasta, h = hasta || desde;
+  if(!d && !h) return true;
+  if(reg.hasta && d && reg.hasta < d) return false;   // la comisión terminó antes del rango
+  if(reg.desde && h && reg.desde > h) return false;   // la comisión empieza después del rango
+  return true;
+}
+// Cuadro debajo del resumen: lista el personal externo en comisión del depto, agrupado por unidad,
+// con grado, nombre y hasta cuándo está en comisión. Solo se muestra al ver UN depto puntual.
+function renderExtDetalle(depSel, modo){
+  const box = document.getElementById('anexoExtDetalle');
+  if(!box) return;
+  const especifico = depSel && depSel!=='__ALL__' && depSel!=='__DEPTOS__';
+  const ocultar = ()=>{ box.classList.add('hidden'); box.innerHTML=''; };
+  if(!especifico){ ocultar(); return; }
+
+  let desde, hasta;
+  if(modo==='dia'){ desde = hasta = document.getElementById('a_fecha').value; }
+  else { desde = document.getElementById('a_desde').value; hasta = document.getElementById('a_hasta').value; }
+
+  const porUnidad = {};   // unidad -> [{grado, nombre, hasta}]
+  Object.values(getExternos()).forEach(reg=>{
+    if(keyNodo(reg.unidadACargo)!==keyNodo(depSel)) return;
+    if(!comisionEnRango(reg, desde, hasta)) return;
+    (reg.personal||[]).forEach(p=>{
+      const uni = (p.unidadOrigen || reg.unidadOrigen || '(sin unidad)');
+      (porUnidad[uni] = porUnidad[uni] || []).push({ grado:p.grado||'', nombre:p.nombre||'', hasta: reg.hasta||'' });
+    });
+  });
+
+  const unidades = Object.keys(porUnidad).sort();
+  if(!unidades.length){ ocultar(); return; }
+
+  let html = '<div class="ext-tit">b. Personal externo en comisión</div>';
+  unidades.forEach(uni=>{
+    html += `<div class="ext-uni"><div class="ext-uni-tit">UNIDAD: ${escAttr(String(uni).toUpperCase())}</div><ul class="ext-lista">`;
+    porUnidad[uni].forEach(p=>{
+      const h = p.hasta ? ` <span class="ext-hasta">— en comisión hasta ${escAttr(fmtFecha(p.hasta))}</span>` : '';
+      html += `<li>${escAttr(p.grado)} ${escAttr(p.nombre)}${h}</li>`;
+    });
+    html += '</ul></div>';
+  });
+  box.innerHTML = html;
+  box.classList.remove('hidden');
 }
 
 // Junta el personal con Rancho SÍ de todos los días del rango (cada día suma sus raciones).
