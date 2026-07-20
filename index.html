@@ -2225,9 +2225,9 @@ function imprimirAnexo(){
     "body{font-family:'Times New Roman',serif;color:#000;padding:26px;text-align:center;}"+
     '.info{font-size:.96rem;margin:2px 0;text-align:left;text-transform:uppercase;}'+
     '.info-wrap{margin:6px 0 12px;}'+
-    // Envoltorio con el mismo ancho de la tabla: así las letras A./B. quedan alineadas
-    // a su borde izquierdo en vez de centradas en toda la hoja.
-    '.doc-wrap{width:'+docWidth+';margin:0 auto;text-align:left;}'+
+    // Envoltorio con el mismo ancho de la tabla, pegado al margen izquierdo (sin centrar):
+    // así las letras A./B. y la tabla quedan alineadas con el encabezado (Aporcionamiento/Unidad).
+    '.doc-wrap{width:'+docWidth+';margin:14px 0 0;text-align:left;}'+
     '.rot{font-weight:bold;margin:10px 0 4px;text-align:left;}'+
     'table{border-collapse:collapse;font-size:'+bodyFont+';table-layout:fixed;width:100%;}'+
     'th,td{border:1px solid #333;padding:3px 1px;text-align:center;vertical-align:middle;'+
