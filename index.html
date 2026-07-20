@@ -211,7 +211,7 @@
   /* Detalle del personal externo en comisión (debajo del resumen) */
   .ext-detalle{margin-top:1rem;}
   .ext-detalle.hidden{display:none;}
-  .ext-detalle .ext-tit{
+  .ext-tit{
     font-weight:bold;color:var(--verde-oscuro);text-transform:uppercase;
     font-size:.82rem;letter-spacing:.5px;margin:0 0 .5rem;
   }
@@ -766,7 +766,7 @@
   <!-- ================= VISTA ANEXO / RESUMEN ================= -->
   <section id="vistaAnexo" class="vista hidden">
     <div class="panel">
-      <h2>Anexo Orden del Día — Fuerza Racionada</h2>
+      <h2 style="text-align:center;">APORCIONAMIENTO</h2>
       <div class="panel-body">
 
         <div class="cabecera">
@@ -796,7 +796,7 @@
           </div>
         </div>
 
-        <div class="rot" style="margin:.4rem 0 .3rem;">A. RESUMEN PERSONAL APORCIONADO</div>
+        <div class="ext-tit" style="margin:.4rem 0 .3rem;">A. RESUMEN PERSONAL APORCIONADO</div>
         <div class="tabla-wrap">
           <table class="personal anexo-tabla">
             <thead id="anexo_thead"></thead>
@@ -1969,7 +1969,7 @@ function renderExtDetalle(depSel, modo){
   const unidades = Object.keys(porUnidad).sort();
   if(!unidades.length){ ocultar(); return; }
 
-  let html = '<div class="ext-tit">b. Personal externo en comisión</div>';
+  let html = '<div class="ext-tit">B. PERSONAL EXTERNO EN COMISIÓN</div>';
   unidades.forEach(uni=>{
     html += `<div class="ext-uni"><div class="ext-uni-tit">UNIDAD: ${escAttr(String(uni).toUpperCase())}</div><ul class="ext-lista">`;
     porUnidad[uni].forEach(p=>{
@@ -2247,7 +2247,7 @@ function imprimirAnexo(){
       '<div class="info"><b>APORCIONAMIENTO:</b> '+escAttr(String(fecha).toUpperCase())+'</div>'+
       '<div class="info"><b>UNIDAD:</b> '+escAttr(String(depto).toUpperCase())+'</div>'+
     '</div>'+
-    '<div class="rot">a. PARTE DE APORCIONAMIENTO</div>'+
+    '<div class="rot">A. PARTE DE APORCIONAMIENTO</div>'+
     tabla+
     (extHtml ? '<div class="ext-print" style="text-align:left;margin:12px auto 0;max-width:'+(landscape?'900px':'640px')+';">'+extHtml+'</div>' : '')+
     '</body></html>'
