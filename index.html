@@ -219,10 +219,12 @@
     border:1px solid var(--gris-borde);border-left:4px solid var(--oliva);
     border-radius:6px;padding:.5rem .7rem;margin-bottom:.5rem;background:#f6f8f2;
   }
+  .ext-uni-label{font-weight:bold;color:var(--gris);text-transform:uppercase;font-size:.72rem;letter-spacing:.5px;margin-bottom:.1rem;}
   .ext-uni-tit{font-weight:bold;color:var(--verde-militar);text-transform:uppercase;font-size:.82rem;margin-bottom:.25rem;}
   .ext-lista{margin:0;padding-left:1.1rem;}
   .ext-lista li{font-size:.9rem;margin:.15rem 0;}
   .ext-hasta{color:var(--gris);font-size:.82rem;}
+  .ext-cargo{color:var(--gris);font-size:.82rem;}
   /* Barra de aviso de versión nueva (auto-actualización) */
   .update-bar{
     position:fixed;top:0;left:0;right:0;z-index:9999;
@@ -1956,13 +1958,13 @@ function renderExtDetalle(depSel, modo){
   if(modo==='dia'){ desde = hasta = document.getElementById('a_fecha').value; }
   else { desde = document.getElementById('a_desde').value; hasta = document.getElementById('a_hasta').value; }
 
-  const porUnidad = {};   // unidad -> [{grado, nombre, hasta}]
+  const porUnidad = {};   // unidad -> [{grado, nombre, hasta, cargo}]
   Object.values(getExternos()).forEach(reg=>{
     if(especifico && keyNodo(reg.unidadACargo)!==keyNodo(depSel)) return;   // depto puntual filtra; si no, todos
     if(!comisionEnRango(reg, desde, hasta)) return;
     (reg.personal||[]).forEach(p=>{
       const uni = (p.unidadOrigen || reg.unidadOrigen || '(sin unidad)');
-      (porUnidad[uni] = porUnidad[uni] || []).push({ grado:p.grado||'', nombre:p.nombre||'', hasta: reg.hasta||'' });
+      (porUnidad[uni] = porUnidad[uni] || []).push({ grado:p.grado||'', nombre:p.nombre||'', hasta: reg.hasta||'', cargo: reg.unidadACargo||'' });
     });
   });
 
@@ -1971,10 +1973,11 @@ function renderExtDetalle(depSel, modo){
 
   let html = '<div class="ext-tit">B. PERSONAL EXTERNO EN COMISIÓN</div>';
   unidades.forEach(uni=>{
-    html += `<div class="ext-uni"><div class="ext-uni-tit">UNIDAD: ${escAttr(String(uni).toUpperCase())}</div><ul class="ext-lista">`;
+    html += `<div class="ext-uni"><div class="ext-uni-label">UNIDAD</div><div class="ext-uni-tit">${escAttr(String(uni).toUpperCase())}</div><ul class="ext-lista">`;
     porUnidad[uni].forEach(p=>{
       const h = p.hasta ? ` <span class="ext-hasta">— en comisión hasta ${escAttr(fmtFecha(p.hasta))}</span>` : '';
-      html += `<li>${escAttr(p.grado)} ${escAttr(p.nombre)}${h}</li>`;
+      const c = p.cargo ? ` <span class="ext-cargo">— a cargo de ${escAttr(String(p.cargo).toUpperCase())}</span>` : '';
+      html += `<li>${escAttr(p.grado)} ${escAttr(p.nombre)}${h}${c}</li>`;
     });
     html += '</ul></div>';
   });
@@ -2196,8 +2199,8 @@ function imprimirAnexo(){
   const muchas = nCols > 14;
   const landscape = muchas || anchoTabla > 620;                  // apaisa si no cabe en vertical
   const firstW    = muchas ? 92 : 116;                           // 1ª col (categoría) un poco menor si hay muchas
-  const tablaCss  = muchas ? 'width:100%;'                        // se ajusta al ancho de la página
-                          : ('width:'+anchoTabla+'px;');         // ancho fijo centrado (pocas columnas)
+  const docWidth  = muchas ? '100%'                               // se ajusta al ancho de la página
+                          : (anchoTabla+'px');                    // ancho fijo (pocas columnas)
   const colCss    = muchas ? ''                                   // sin ancho fijo: se reparten solas
                           : ('th:not(:first-child),td:not(:first-child){width:'+ANCHO+'px;}');
   const headFont  = muchas ? '.5rem'  : '.55rem';
@@ -2222,8 +2225,11 @@ function imprimirAnexo(){
     "body{font-family:'Times New Roman',serif;color:#000;padding:26px;text-align:center;}"+
     '.info{font-size:.96rem;margin:2px 0;text-align:left;text-transform:uppercase;}'+
     '.info-wrap{margin:6px 0 12px;}'+
-    '.rot{font-weight:bold;margin:10px 0 4px;text-align:center;}'+
-    'table{border-collapse:collapse;font-size:'+bodyFont+';table-layout:fixed;'+tablaCss+'margin:0 auto;}'+
+    // Envoltorio con el mismo ancho de la tabla: así las letras A./B. quedan alineadas
+    // a su borde izquierdo en vez de centradas en toda la hoja.
+    '.doc-wrap{width:'+docWidth+';margin:0 auto;text-align:left;}'+
+    '.rot{font-weight:bold;margin:10px 0 4px;text-align:left;}'+
+    'table{border-collapse:collapse;font-size:'+bodyFont+';table-layout:fixed;width:100%;}'+
     'th,td{border:1px solid #333;padding:3px 1px;text-align:center;vertical-align:middle;'+
       'overflow-wrap:break-word;white-space:normal;line-height:1.15;}'+
     // Encabezados de columna: nombre entero arriba (sin cortar a mitad de palabra),
@@ -2234,22 +2240,26 @@ function imprimirAnexo(){
     'th:first-child,td:first-child{text-align:left;width:'+firstW+'px;}'+
     colCss+
     'tfoot th{background:#e9e9e9;}'+
-    // Cuadro de personal externo en comisión (debajo de la tabla)
+    // Personal externo en comisión (debajo de la tabla) — sin cuadro, solo espacio entre unidades
     '.ext-tit{font-weight:bold;text-align:left;margin:12px 0 6px;font-size:.92rem;text-transform:uppercase;}'+
-    '.ext-uni{text-align:left;border:1px solid #333;border-left:3px solid #333;border-radius:4px;padding:4px 8px;margin:5px 0;}'+
+    '.ext-uni{text-align:left;margin:10px 0;}'+
+    '.ext-uni-label{font-weight:bold;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;}'+
     '.ext-uni-tit{font-weight:bold;font-size:.86rem;text-transform:uppercase;}'+
     '.ext-lista{margin:2px 0 2px 16px;padding:0;}'+
     '.ext-lista li{font-size:.84rem;margin:1px 0;}'+
     '.ext-hasta{font-style:italic;}'+
+    '.ext-cargo{font-style:italic;}'+
     '@media print{body{padding:0;}}'+
     '</style></head><body>'+
     '<div class="info-wrap">'+
       '<div class="info"><b>APORCIONAMIENTO:</b> '+escAttr(String(fecha).toUpperCase())+'</div>'+
       '<div class="info"><b>UNIDAD:</b> '+escAttr(String(depto).toUpperCase())+'</div>'+
     '</div>'+
-    '<div class="rot">A. PARTE DE APORCIONAMIENTO</div>'+
-    tabla+
-    (extHtml ? '<div class="ext-print" style="text-align:left;margin:12px auto 0;max-width:'+(landscape?'900px':'640px')+';">'+extHtml+'</div>' : '')+
+    '<div class="doc-wrap">'+
+      '<div class="rot">A. PARTE DE APORCIONAMIENTO</div>'+
+      tabla+
+      (extHtml ? '<div class="ext-print" style="margin-top:12px;">'+extHtml+'</div>' : '')+
+    '</div>'+
     '</body></html>'
   );
   w.document.close(); w.focus();
