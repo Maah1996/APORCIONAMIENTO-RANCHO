@@ -1063,7 +1063,7 @@
    ⚠️ EN CADA DEPLOY: subir APP_VERSION aquí Y el contenido de version.txt
    AL MISMO valor (si no, la barra no aparece o aparece siempre).
    ============================================================ */
-const APP_VERSION = '2026-07-20-1';
+const APP_VERSION = '2026-07-20-2';
 let _nuevaVersion = '';
 function comprobarVersion(){
   try{
@@ -1960,9 +1960,9 @@ function comisionEnRango(reg, desde, hasta){
 function renderExtDetalle(depSel, modo){
   const box = document.getElementById('anexoExtDetalle');
   if(!box) return;
-  const especifico = depSel && depSel!=='__ALL__' && depSel!=='__DEPTOS__';
   const ocultar = ()=>{ box.classList.add('hidden'); box.innerHTML=''; };
-  if(!especifico){ ocultar(); return; }
+  // Depto puntual (caso usuario) → solo su depto. Admin en «Todas las unidades»/«Todos los deptos» → TODOS los externos.
+  const especifico = depSel && depSel!=='__ALL__' && depSel!=='__DEPTOS__';
 
   let desde, hasta;
   if(modo==='dia'){ desde = hasta = document.getElementById('a_fecha').value; }
@@ -1970,7 +1970,7 @@ function renderExtDetalle(depSel, modo){
 
   const porUnidad = {};   // unidad -> [{grado, nombre, hasta}]
   Object.values(getExternos()).forEach(reg=>{
-    if(keyNodo(reg.unidadACargo)!==keyNodo(depSel)) return;
+    if(especifico && keyNodo(reg.unidadACargo)!==keyNodo(depSel)) return;   // depto puntual filtra; si no, todos
     if(!comisionEnRango(reg, desde, hasta)) return;
     (reg.personal||[]).forEach(p=>{
       const uni = (p.unidadOrigen || reg.unidadOrigen || '(sin unidad)');
@@ -2221,6 +2221,9 @@ function imprimirAnexo(){
   const clon = tablaEl.cloneNode(true);
   if(!esVistaDias) clon.querySelectorAll('thead th').forEach((th,i)=>{ if(i>0) th.innerHTML = encPrintHeader(th.textContent); });
   const tabla = clon.outerHTML;
+  // Detalle de personal externo en comisión (si está visible en pantalla) → también al papel
+  const extBox = document.getElementById('anexoExtDetalle');
+  const extHtml = (extBox && !extBox.classList.contains('hidden')) ? extBox.innerHTML : '';
   const w = window.open('', '_blank');
   if(!w){ toast('Habilite las ventanas emergentes para imprimir el Anexo.', 'warn'); return; }
   w.document.write(
@@ -2242,6 +2245,13 @@ function imprimirAnexo(){
     'th:first-child,td:first-child{text-align:left;width:'+firstW+'px;}'+
     colCss+
     'tfoot th{background:#e9e9e9;}'+
+    // Cuadro de personal externo en comisión (debajo de la tabla)
+    '.ext-tit{font-weight:bold;text-align:left;margin:12px 0 6px;font-size:.92rem;text-transform:uppercase;}'+
+    '.ext-uni{text-align:left;border:1px solid #333;border-left:3px solid #333;border-radius:4px;padding:4px 8px;margin:5px 0;}'+
+    '.ext-uni-tit{font-weight:bold;font-size:.86rem;text-transform:uppercase;}'+
+    '.ext-lista{margin:2px 0 2px 16px;padding:0;}'+
+    '.ext-lista li{font-size:.84rem;margin:1px 0;}'+
+    '.ext-hasta{font-style:italic;}'+
     '@media print{body{padding:0;}}'+
     '</style></head><body>'+
     '<div class="info-wrap">'+
@@ -2250,6 +2260,7 @@ function imprimirAnexo(){
     '</div>'+
     '<div class="rot">a. PARTE DE APORCIONAMIENTO</div>'+
     tabla+
+    (extHtml ? '<div class="ext-print" style="text-align:left;margin:12px auto 0;max-width:'+(landscape?'900px':'640px')+';">'+extHtml+'</div>' : '')+
     '</body></html>'
   );
   w.document.close(); w.focus();
